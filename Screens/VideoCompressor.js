@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -18,7 +18,7 @@ import { Video as CompressorVideo } from 'react-native-compressor';
 import * as MediaLibrary from 'expo-media-library';
 import * as Sharing from 'expo-sharing';
 import { File } from 'expo-file-system';
-import { Video, ResizeMode } from 'expo-av';
+import { VideoView, useVideoPlayer } from 'expo-video';
 
 const ACCENT = '#3f51c3';
 
@@ -45,6 +45,13 @@ const VideoCompressor = ({ navigation }) => {
   const [mode, setMode] = useState('quality');
   const [targetSize, setTargetSize] = useState('');
   const [targetUnit, setTargetUnit] = useState('MB');
+
+  const player = useVideoPlayer(null, (p) => { p.loop = false; });
+
+  useEffect(() => {
+    const source = compressedUri || video?.uri;
+    if (source) player.replace({ uri: source });
+  }, [video?.uri, compressedUri]);
 
   const pickVideo = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -224,12 +231,11 @@ const VideoCompressor = ({ navigation }) => {
           {/* Video Preview */}
           {video && (
             <View style={styles.previewSection}>
-              <Video
-                source={{ uri: compressedUri || video.uri }}
+              <VideoView
+                player={player}
                 style={styles.preview}
-                resizeMode={ResizeMode.CONTAIN}
-                useNativeControls
-                isLooping={false}
+                nativeControls
+                allowsFullscreen
               />
               {compressedUri && (
                 <View style={styles.badge}>

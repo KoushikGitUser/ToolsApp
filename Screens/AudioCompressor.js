@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -17,7 +17,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import { Audio as CompressorAudio } from 'react-native-compressor';
 import * as Sharing from 'expo-sharing';
 import { File } from 'expo-file-system';
-import { Audio } from 'expo-av';
+import { useAudioPlayer, useAudioPlayerStatus, setAudioModeAsync } from 'expo-audio';
 
 const ACCENT = '#cb0086';
 
@@ -43,29 +43,32 @@ const AudioCompressor = ({ navigation }) => {
   const [mode, setMode] = useState('quality');
   const [targetSize, setTargetSize] = useState('');
   const [targetUnit, setTargetUnit] = useState('KB');
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [duration, setDuration] = useState(null);
-  const [position, setPosition] = useState(0);
-  const soundRef = useRef(null);
   const [playingCompressed, setPlayingCompressed] = useState(false);
+  const originalDurationSec = useRef(null);
+  const justPicked = useRef(false);
 
+  const player = useAudioPlayer(null);
+  const status = useAudioPlayerStatus(player);
+
+  // iOS silent mode support
   useEffect(() => {
-    return () => {
-      if (soundRef.current) {
-        soundRef.current.unloadAsync();
-      }
-    };
+    setAudioModeAsync({ playsInSilentModeIOS: true });
   }, []);
 
-  const onPlaybackStatusUpdate = (status) => {
-    if (status.isLoaded) {
-      setPosition(status.positionMillis || 0);
-      if (status.didJustFinish) {
-        setIsPlaying(false);
-        setPosition(0);
-      }
+  // Capture original duration after picking a new file
+  useEffect(() => {
+    if (justPicked.current && status.duration > 0) {
+      originalDurationSec.current = status.duration;
+      justPicked.current = false;
     }
-  };
+  }, [status.duration]);
+
+  // Reset play state when audio finishes
+  useEffect(() => {
+    if (status.didJustFinish) {
+      player.seekTo(0);
+    }
+  }, [status.didJustFinish]);
 
   const pickAudio = async () => {
     const result = await DocumentPicker.getDocumentAsync({
@@ -76,69 +79,41 @@ const AudioCompressor = ({ navigation }) => {
     if (!result.canceled && result.assets?.length > 0) {
       const asset = result.assets[0];
 
-      if (soundRef.current) {
-        await soundRef.current.unloadAsync();
-        soundRef.current = null;
-      }
-      setIsPlaying(false);
-      setPosition(0);
       setPlayingCompressed(false);
-
       setAudio({ uri: asset.uri, name: asset.name });
       setCompressedUri(null);
       setCompressedSize(null);
+      originalDurationSec.current = null;
+      justPicked.current = true;
 
       try {
         const file = new File(asset.uri);
-        if (file.exists) {
-          setOriginalSize(file.size);
-        }
+        if (file.exists) setOriginalSize(file.size);
       } catch {
         setOriginalSize(asset.size || null);
       }
 
       try {
-        const { sound, status } = await Audio.Sound.createAsync(
-          { uri: asset.uri },
-          {},
-          onPlaybackStatusUpdate
-        );
-        soundRef.current = sound;
-        if (status.durationMillis) {
-          setDuration(status.durationMillis);
-        }
+        player.replace({ uri: asset.uri });
       } catch (e) {
         console.log('Audio load error:', e);
       }
     }
   };
 
-  const togglePlayback = async (uri, isCompressed) => {
+  const togglePlayback = (uri, isCompressed) => {
     try {
-      if (isPlaying && playingCompressed === isCompressed) {
-        await soundRef.current?.pauseAsync();
-        setIsPlaying(false);
+      if (status.playing && playingCompressed === isCompressed) {
+        player.pause();
         return;
       }
 
-      if (playingCompressed !== isCompressed || !soundRef.current) {
-        if (soundRef.current) {
-          await soundRef.current.unloadAsync();
-        }
-        const { sound, status } = await Audio.Sound.createAsync(
-          { uri },
-          {},
-          onPlaybackStatusUpdate
-        );
-        soundRef.current = sound;
-        if (status.durationMillis) {
-          setDuration(status.durationMillis);
-        }
+      if (playingCompressed !== isCompressed) {
+        player.replace({ uri });
         setPlayingCompressed(isCompressed);
       }
 
-      await soundRef.current.playAsync();
-      setIsPlaying(true);
+      player.play();
     } catch (e) {
       console.log('Playback error:', e);
       triggerToast('Error', 'Failed to play audio.', 'error', 3000);
@@ -158,13 +133,10 @@ const AudioCompressor = ({ navigation }) => {
     if (!audio) return;
     setLoading(true);
     try {
-      if (soundRef.current) {
-        await soundRef.current.pauseAsync();
-        setIsPlaying(false);
-      }
+      if (status.playing) player.pause();
 
       let targetBitrate;
-      const durationSec = duration ? duration / 1000 : null;
+      const durationSec = originalDurationSec.current;
 
       if (mode === 'quality') {
         if (originalSize && durationSec && durationSec > 0) {
@@ -225,19 +197,21 @@ const AudioCompressor = ({ navigation }) => {
     return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
   };
 
-  const formatDuration = (ms) => {
-    if (!ms) return '0:00';
-    const totalSec = Math.floor(ms / 1000);
-    const mins = Math.floor(totalSec / 60);
-    const secs = totalSec % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  const formatDuration = (secs) => {
+    if (!secs) return '0:00';
+    const mins = Math.floor(secs / 60);
+    const s = Math.floor(secs % 60);
+    return `${mins}:${s.toString().padStart(2, '0')}`;
   };
 
   const reductionPercent = originalSize && compressedSize
     ? Math.round((1 - compressedSize / originalSize) * 100)
     : null;
 
-  const progressPercent = duration && position ? Math.min((position / duration) * 100, 100) : 0;
+  const durationSec = status.duration || 0;
+  const currentTimeSec = status.currentTime || 0;
+  const isPlaying = status.playing;
+  const progressPercent = durationSec > 0 ? Math.min((currentTimeSec / durationSec) * 100, 100) : 0;
 
   return (
     <View style={styles.container}>
@@ -280,7 +254,7 @@ const AudioCompressor = ({ navigation }) => {
                   <Text style={styles.audioName} numberOfLines={1}>
                     {playingCompressed && compressedUri ? 'Compressed Audio' : audio.name}
                   </Text>
-                  <Text style={styles.audioDuration}>{formatDuration(duration)}</Text>
+                  <Text style={styles.audioDuration}>{formatDuration(durationSec)}</Text>
                 </View>
                 <TouchableOpacity
                   style={styles.playBtn}
@@ -295,8 +269,8 @@ const AudioCompressor = ({ navigation }) => {
                 <View style={[styles.playbackBarFill, { width: `${progressPercent}%` }]} />
               </View>
               <View style={styles.playbackTimeRow}>
-                <Text style={styles.playbackTime}>{formatDuration(position)}</Text>
-                <Text style={styles.playbackTime}>{formatDuration(duration)}</Text>
+                <Text style={styles.playbackTime}>{formatDuration(currentTimeSec)}</Text>
+                <Text style={styles.playbackTime}>{formatDuration(durationSec)}</Text>
               </View>
 
               {/* Toggle Original / Compressed playback */}
@@ -480,8 +454,7 @@ const AudioCompressor = ({ navigation }) => {
                   setCompressedUri(null);
                   setCompressedSize(null);
                   setPlayingCompressed(false);
-                  setIsPlaying(false);
-                  setPosition(0);
+                  if (isPlaying) player.pause();
                 }}
                 activeOpacity={0.8}
               >

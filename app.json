@@ -30,7 +30,9 @@
       "@react-native-community/datetimepicker",
       "expo-build-properties",
       "expo-font",
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-video",
+      "expo-audio"
     ],
     "extra": {
       "eas": {
