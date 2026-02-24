@@ -13,12 +13,13 @@ import {
   TextInput,
   KeyboardAvoidingView,
 } from 'react-native';
-import { Ionicons, MaterialIcons, AntDesign } from '@expo/vector-icons';
+import { Ionicons, MaterialIcons, AntDesign, MaterialCommunityIcons } from '@expo/vector-icons';
 import { triggerToast } from '../Services/toast';
 import * as ImagePicker from 'expo-image-picker';
 import { Image as CompressorImage } from 'react-native-compressor';
 import * as MediaLibrary from 'expo-media-library';
 import { File, Paths } from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
 
 const ACCENT = '#ffa200';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -170,6 +171,11 @@ const ImageCompressor = ({ navigation }) => {
     }
   };
 
+  const shareImage = async () => {
+    if (!compressedUri) return;
+    await Sharing.shareAsync(compressedUri, { mimeType: 'image/jpeg' });
+  };
+
   const saveImage = async () => {
     if (!compressedUri) return;
     try {
@@ -219,7 +225,7 @@ const ImageCompressor = ({ navigation }) => {
         {/* Empty State */}
         {!image && (
           <View style={styles.emptyState}>
-            <AntDesign name="compress" size={64} color="#333" />
+            <MaterialCommunityIcons name="file-image" size={64} color="#333" />
             <Text style={styles.emptyTitle}>No image selected</Text>
             <Text style={styles.emptyDesc}>
               Pick an image from your gallery to compress it
@@ -391,10 +397,16 @@ const ImageCompressor = ({ navigation }) => {
               <Text style={styles.successText}>Image Compressed!</Text>
             </View>
 
-            <TouchableOpacity style={styles.saveBtn} onPress={saveImage} activeOpacity={0.8}>
-              <Ionicons name="download-outline" size={20} color="#fff" />
-              <Text style={styles.saveBtnText}>Save to Gallery</Text>
-            </TouchableOpacity>
+            <View style={styles.actionRow}>
+              <TouchableOpacity style={styles.saveBtn} onPress={saveImage} activeOpacity={0.8}>
+                <Ionicons name="download-outline" size={20} color="#24bd6c" />
+                <Text style={styles.saveBtnText}>Save</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.shareBtn} onPress={shareImage} activeOpacity={0.8}>
+                <Ionicons name="share-outline" size={20} color="#2E86DE" />
+                <Text style={styles.shareBtnText}>Share</Text>
+              </TouchableOpacity>
+            </View>
 
             <TouchableOpacity
               style={styles.retryBtn}
@@ -434,7 +446,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 20,
-    paddingBottom: 40,
+    paddingBottom: 100,
   },
 
   // Empty State
@@ -667,7 +679,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#1A1A1A',
+    backgroundColor: ACCENT + '20',
     borderRadius: 60,
     borderWidth: 1,
     borderColor: ACCENT + '40',
@@ -679,18 +691,38 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
   },
+  actionRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 12,
+  },
   saveBtn: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#2E86DE',
+    backgroundColor: '#fff',
     borderRadius: 60,
     paddingVertical: 16,
-    marginTop: 12,
     gap: 10,
   },
   saveBtnText: {
-    color: '#fff',
+    color: '#24bd6c',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  shareBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 60,
+    paddingVertical: 16,
+    gap: 10,
+  },
+  shareBtnText: {
+    color: '#2E86DE',
     fontSize: 16,
     fontWeight: '700',
   },

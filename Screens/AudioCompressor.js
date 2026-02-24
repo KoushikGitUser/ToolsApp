@@ -49,7 +49,6 @@ const AudioCompressor = ({ navigation }) => {
 
   const player = useAudioPlayer(null);
   const status = useAudioPlayerStatus(player);
-
   // iOS silent mode support
   useEffect(() => {
     setAudioModeAsync({ playsInSilentModeIOS: true });
@@ -444,7 +443,7 @@ const AudioCompressor = ({ navigation }) => {
               </View>
 
               <TouchableOpacity style={styles.shareBtn} onPress={shareAudio} activeOpacity={0.8}>
-                <Ionicons name="share-outline" size={20} color="#fff" />
+                <Ionicons name="share-outline" size={20} color="#24bd6c" />
                 <Text style={styles.shareBtnText}>Save / Share Audio</Text>
               </TouchableOpacity>
 
@@ -491,7 +490,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 20,
-    paddingBottom: 40,
+    paddingBottom: 100,
   },
 
   // Empty State
@@ -788,7 +787,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#1A1A1A',
+    backgroundColor: ACCENT + '20',
     borderRadius: 60,
     borderWidth: 1,
     borderColor: ACCENT + '40',
@@ -804,14 +803,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#2E86DE',
+    backgroundColor: '#fff',
     borderRadius: 60,
     paddingVertical: 16,
     marginTop: 12,
     gap: 10,
   },
   shareBtnText: {
-    color: '#fff',
+    color: '#24bd6c',
     fontSize: 16,
     fontWeight: '700',
   },

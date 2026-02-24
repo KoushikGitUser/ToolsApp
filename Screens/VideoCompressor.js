@@ -235,7 +235,7 @@ const VideoCompressor = ({ navigation }) => {
                 player={player}
                 style={styles.preview}
                 nativeControls
-                allowsFullscreen
+                fullscreenOptions={{ isFullscreenEnabled: true }}
               />
               {compressedUri && (
                 <View style={styles.badge}>
@@ -406,15 +406,16 @@ const VideoCompressor = ({ navigation }) => {
                 <Text style={styles.successText}>Video Compressed!</Text>
               </View>
 
-              <TouchableOpacity style={styles.saveBtn} onPress={saveVideo} activeOpacity={0.8}>
-                <Ionicons name="download-outline" size={20} color="#fff" />
-                <Text style={styles.saveBtnText}>Save to Gallery</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity style={styles.shareBtn} onPress={shareVideo} activeOpacity={0.8}>
-                <Ionicons name="share-outline" size={20} color="#fff" />
-                <Text style={styles.shareBtnText}>Share Video</Text>
-              </TouchableOpacity>
+              <View style={styles.actionRow}>
+                <TouchableOpacity style={styles.saveBtn} onPress={saveVideo} activeOpacity={0.8}>
+                  <Ionicons name="download-outline" size={20} color="#24bd6c" />
+                  <Text style={styles.saveBtnText}>Save</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.shareBtn} onPress={shareVideo} activeOpacity={0.8}>
+                  <Ionicons name="share-outline" size={20} color="#2E86DE" />
+                  <Text style={styles.shareBtnText}>Share</Text>
+                </TouchableOpacity>
+              </View>
 
               <TouchableOpacity
                 style={styles.retryBtn}
@@ -454,7 +455,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 20,
-    paddingBottom: 40,
+    paddingBottom: 100,
   },
 
   // Empty State
@@ -506,7 +507,7 @@ const styles = StyleSheet.create({
   },
   durationBadge: {
     position: 'absolute',
-    bottom: 12,
+    top: 12,
     right: 12,
     backgroundColor: 'rgba(0,0,0,0.75)',
     paddingHorizontal: 10,
@@ -717,7 +718,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#1A1A1A',
+    backgroundColor: ACCENT + '20',
     borderRadius: 60,
     borderWidth: 1,
     borderColor: ACCENT + '40',
@@ -729,33 +730,38 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
   },
+  actionRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 12,
+  },
   saveBtn: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#2E86DE',
+    backgroundColor: '#fff',
     borderRadius: 60,
     paddingVertical: 16,
-    marginTop: 12,
     gap: 10,
   },
   saveBtnText: {
-    color: '#fff',
+    color: '#24bd6c',
     fontSize: 16,
     fontWeight: '700',
   },
   shareBtn: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#6C63FF',
+    backgroundColor: '#fff',
     borderRadius: 60,
     paddingVertical: 16,
-    marginTop: 12,
     gap: 10,
   },
   shareBtnText: {
-    color: '#fff',
+    color: '#2E86DE',
     fontSize: 16,
     fontWeight: '700',
   },

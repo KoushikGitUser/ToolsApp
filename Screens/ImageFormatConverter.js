@@ -305,15 +305,16 @@ const ImageFormatConverter = ({ navigation }) => {
               <Text style={styles.successText}>Converted to {targetFormat}!</Text>
             </View>
 
-            <TouchableOpacity style={styles.saveBtn} onPress={saveImage} activeOpacity={0.8}>
-              <Ionicons name="download-outline" size={20} color="#fff" />
-              <Text style={styles.saveBtnText}>Save to Gallery</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.shareBtn} onPress={shareImage} activeOpacity={0.8}>
-              <Ionicons name="share-outline" size={20} color="#fff" />
-              <Text style={styles.shareBtnText}>Share Image</Text>
-            </TouchableOpacity>
+            <View style={styles.actionRow}>
+              <TouchableOpacity style={styles.saveBtn} onPress={saveImage} activeOpacity={0.8}>
+                <Ionicons name="download-outline" size={20} color="#24bd6c" />
+                <Text style={styles.saveBtnText}>Save</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.shareBtn} onPress={shareImage} activeOpacity={0.8}>
+                <Ionicons name="share-outline" size={20} color="#2E86DE" />
+                <Text style={styles.shareBtnText}>Share</Text>
+              </TouchableOpacity>
+            </View>
 
             <TouchableOpacity
               style={styles.retryBtn}
@@ -352,7 +353,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 20,
-    paddingBottom: 40,
+    paddingBottom: 100,
   },
 
   // Empty State
@@ -413,7 +414,7 @@ const styles = StyleSheet.create({
   formatCard: {
     flex: 1,
     backgroundColor: '#1A1A1A',
-    borderRadius: 16,
+    borderRadius: 76,
     borderWidth: 1,
     borderColor: '#2A2A2A',
     padding: 14,
@@ -511,7 +512,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#1A1A1A',
     borderWidth: 1,
     borderColor: '#333',
-    borderRadius: 16,
+    borderRadius: 76,
     paddingVertical: 18,
     alignItems: 'center',
     gap: 8,
@@ -557,7 +558,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#1A1A1A',
+    backgroundColor: ACCENT + '20',
     borderRadius: 60,
     borderWidth: 1,
     borderColor: ACCENT + '40',
@@ -569,33 +570,38 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
   },
+  actionRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 12,
+  },
   saveBtn: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#43B77A',
+    backgroundColor: '#fff',
     borderRadius: 60,
     paddingVertical: 16,
-    marginTop: 12,
     gap: 10,
   },
   saveBtnText: {
-    color: '#fff',
+    color: '#24bd6c',
     fontSize: 16,
     fontWeight: '700',
   },
   shareBtn: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#6C63FF',
+    backgroundColor: '#fff',
     borderRadius: 60,
     paddingVertical: 16,
-    marginTop: 12,
     gap: 10,
   },
   shareBtnText: {
-    color: '#fff',
+    color: '#2E86DE',
     fontSize: 16,
     fontWeight: '700',
   },

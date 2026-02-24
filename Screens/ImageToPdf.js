@@ -12,14 +12,14 @@ import {
   Dimensions,
   Modal,
 } from 'react-native';
-import { Ionicons, FontAwesome5, MaterialIcons } from '@expo/vector-icons';
+import { Ionicons, FontAwesome5, MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { triggerToast } from '../Services/toast';
 import * as ImagePicker from 'expo-image-picker';
 import * as Print from 'expo-print';
 import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 
-const ACCENT = '#43B77A';
+const ACCENT = '#ff0000';
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const THUMB_SIZE = 140;
 
@@ -151,7 +151,7 @@ const ImageToPdf = ({ navigation }) => {
         {/* Empty State */}
         {images.length === 0 && (
           <View style={styles.emptyState}>
-            <FontAwesome5 name="file-pdf" size={64} color="#333" />
+            <MaterialCommunityIcons name="file-image" size={64} color="#333" />
             <Text style={styles.emptyTitle}>No images selected</Text>
             <Text style={styles.emptyDesc}>
               Pick images from your gallery to convert them into a PDF document
@@ -233,7 +233,7 @@ const ImageToPdf = ({ navigation }) => {
             </View>
 
             <TouchableOpacity style={styles.shareBtn} onPress={sharePdf} activeOpacity={0.8}>
-              <Ionicons name="share-outline" size={20} color="#fff" />
+              <Ionicons name="share-outline" size={20} color="#24bd6c" />
               <Text style={styles.shareBtnText}>Save / Share PDF</Text>
             </TouchableOpacity>
           </View>
@@ -295,7 +295,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 20,
-    paddingBottom: 40,
+    paddingBottom: 80,
   },
 
   // Empty State
@@ -437,7 +437,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#1A1A1A',
+    backgroundColor: ACCENT + '20',
     borderRadius: 60,
     borderWidth: 1,
     borderColor: ACCENT + '40',
@@ -453,14 +453,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#2E86DE',
+    backgroundColor: '#fff',
     borderRadius: 60,
     paddingVertical: 16,
     marginTop: 12,
     gap: 10,
   },
   shareBtnText: {
-    color: '#fff',
+    color: '#24bd6c',
     fontSize: 16,
     fontWeight: '700',
   },
