@@ -49,8 +49,30 @@ const ImageToPdf = ({ navigation }) => {
     });
 
     if (!result.canceled && result.assets?.length > 0) {
-      setImages((prev) => [...prev, ...result.assets]);
-      setPdfUri(null);
+      const MAX_SIZE = 8 * 1024 * 1024;
+      const MAX_COUNT = 15;
+      const remaining = MAX_COUNT - images.length;
+
+      const oversized = result.assets.filter(a => a.fileSize && a.fileSize > MAX_SIZE);
+      const valid = result.assets.filter(a => !a.fileSize || a.fileSize <= MAX_SIZE);
+      const toAdd = valid.slice(0, remaining);
+      const countExceeded = valid.length - toAdd.length;
+
+      if (toAdd.length > 0) {
+        setImages((prev) => [...prev, ...toAdd]);
+        setPdfUri(null);
+      }
+
+      if (oversized.length > 0) {
+        triggerToast(
+          `${oversized.length} image${oversized.length > 1 ? 's' : ''} skipped`,
+          'Each image must be 8 MB or less.',
+          'alert',
+          3500
+        );
+      } else if (countExceeded > 0) {
+        triggerToast('Limit Reached', `Max 15 images allowed. Only ${toAdd.length} added.`, 'alert', 3000);
+      }
     }
   };
 
@@ -204,10 +226,15 @@ const ImageToPdf = ({ navigation }) => {
         )}
 
         {/* Pick Images Button */}
-        <TouchableOpacity style={styles.pickBtn} onPress={pickImages} activeOpacity={0.8}>
+        <TouchableOpacity
+          style={[styles.pickBtn, images.length >= 15 && styles.pickBtnDisabled]}
+          onPress={pickImages}
+          activeOpacity={0.8}
+          disabled={images.length >= 15}
+        >
           <MaterialIcons name="add-photo-alternate" size={22} color={colors.textPrimary} />
           <Text style={styles.pickBtnText}>
-            {images.length === 0 ? 'Pick Images' : 'Add More Images'}
+            {images.length === 0 ? 'Pick Images' : images.length >= 15 ? 'Max Images Reached' : 'Add More Images'}
           </Text>
         </TouchableOpacity>
 
@@ -408,6 +435,9 @@ const createStyles = (colors, accent) => StyleSheet.create({
     paddingVertical: 16,
     marginTop: 4,
     gap: 10,
+  },
+  pickBtnDisabled: {
+    opacity: 0.4,
   },
   pickBtnText: {
     color: colors.textPrimary,

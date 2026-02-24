@@ -151,8 +151,17 @@ const VideoCompressor = ({ navigation }) => {
         }
       );
 
+      const resultSize = getFileSize(result);
+      if (!resultSize || resultSize < 1000) {
+        triggerToast('Incompatible Format', 'This video format cannot be compressed. Please try a different video.', 'error', 4000);
+        setVideo(null);
+        setOriginalSize(null);
+        setProgress(0);
+        return;
+      }
+
       setCompressedUri(result);
-      setCompressedSize(getFileSize(result));
+      setCompressedSize(resultSize);
     } catch (error) {
       console.log('Video compression error:', error);
       triggerToast('Error', 'Failed to compress video. Please try again.', 'error', 3000);
