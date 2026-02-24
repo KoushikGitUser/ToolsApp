@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -21,8 +21,10 @@ import { triggerToast } from '../Services/toast';
 import * as ImagePicker from 'expo-image-picker';
 import * as MediaLibrary from 'expo-media-library';
 import * as Sharing from 'expo-sharing';
+import { useTheme } from '../Services/ThemeContext';
 
 const ACCENT = '#00B4A6';
+const ACCENT_LIGHT = '#26D4C8';
 
 const BLUR_PRESETS = [
   { label: 'None',      intensity: 0   },
@@ -43,6 +45,10 @@ const FullBlur = ({ navigation }) => {
   const [loading, setLoading]                 = useState(false);
   const [fullscreenVisible, setFullscreenVisible] = useState(false);
   const captureViewRef = useRef(null);
+
+  const { colors, isDark } = useTheme();
+  const accent = isDark ? ACCENT : ACCENT_LIGHT;
+  const styles = useMemo(() => createStyles(colors, accent), [colors, accent]);
 
   const displayWidth  = SCREEN_WIDTH - 40;
   const displayHeight = image
@@ -115,7 +121,7 @@ const FullBlur = ({ navigation }) => {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={24} color="#fff" />
+          <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.heading}>Full Blur</Text>
       </View>
@@ -125,7 +131,7 @@ const FullBlur = ({ navigation }) => {
         {/* Empty State */}
         {!image && (
           <View style={styles.emptyState}>
-            <MaterialCommunityIcons name="file-image" size={64} color="#333" />
+            <MaterialCommunityIcons name="file-image" size={64} color={colors.emptyIcon} />
             <Text style={styles.emptyTitle}>No image selected</Text>
             <Text style={styles.emptyDesc}>
               Pick an image from your gallery to apply a full blur effect
@@ -138,7 +144,7 @@ const FullBlur = ({ navigation }) => {
           <>
             <TouchableOpacity
               activeOpacity={0.9}
-             
+              onPress={() => setFullscreenVisible(true)}
             >
               <View
                 ref={captureViewRef}
@@ -166,7 +172,7 @@ const FullBlur = ({ navigation }) => {
 
         {/* Pick Image Button */}
         <TouchableOpacity style={styles.pickBtn} onPress={pickImage} activeOpacity={0.8}>
-          <MaterialIcons name="add-photo-alternate" size={22} color="#fff" />
+          <MaterialIcons name="add-photo-alternate" size={22} color={colors.textPrimary} />
           <Text style={styles.pickBtnText}>{!image ? 'Pick Image' : 'Change Image'}</Text>
         </TouchableOpacity>
 
@@ -226,24 +232,24 @@ const FullBlur = ({ navigation }) => {
           <View style={styles.resultSection}>
             {/* Result image info card */}
             <View style={styles.resultCard}>
-              <View style={[styles.resultIconCircle, { backgroundColor: ACCENT + '20' }]}>
-                <MaterialCommunityIcons name="file-image" size={36} color={ACCENT} />
+              <View style={[styles.resultIconCircle, { backgroundColor: accent + '20' }]}>
+                <MaterialCommunityIcons name="file-image" size={36} color={accent} />
               </View>
               <Text style={styles.resultName} numberOfLines={2}>{imageName}</Text>
             </View>
 
-            <View style={styles.successBadge}>
-              <Ionicons name="checkmark-circle" size={28} color={ACCENT} />
-              <Text style={styles.successText}>Blur Applied!</Text>
+            <View style={[styles.successBadge, { backgroundColor: accent + '20', borderColor: accent + '40' }]}>
+              <Ionicons name="checkmark-circle" size={28} color={accent} />
+              <Text style={[styles.successText, { color: accent }]}>Blur Applied!</Text>
             </View>
 
             <View style={styles.actionRow}>
               <TouchableOpacity style={styles.saveBtn} onPress={saveImage} activeOpacity={0.8}>
-                <Ionicons name="download-outline" size={20} color="#24bd6c" />
+                <Ionicons name="download-outline" size={20} color={colors.saveBtnText} />
                 <Text style={styles.saveBtnText}>Save</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.shareBtn} onPress={shareImage} activeOpacity={0.8}>
-                <Ionicons name="share-outline" size={20} color="#2E86DE" />
+                <Ionicons name="share-outline" size={20} color={colors.shareBtnText} />
                 <Text style={styles.shareBtnText}>Share</Text>
               </TouchableOpacity>
             </View>
@@ -253,7 +259,7 @@ const FullBlur = ({ navigation }) => {
               onPress={() => setBlurredUri(null)}
               activeOpacity={0.8}
             >
-              <Ionicons name="refresh" size={20} color="#fff" />
+              <Ionicons name="refresh" size={20} color={colors.textPrimary} />
               <Text style={styles.retryBtnText}>Adjust & Re-apply</Text>
             </TouchableOpacity>
           </View>
@@ -296,10 +302,10 @@ const FullBlur = ({ navigation }) => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors, accent) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: colors.bg,
   },
   header: {
     flexDirection: 'row',
@@ -314,7 +320,7 @@ const styles = StyleSheet.create({
   heading: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#fff',
+    color: colors.textPrimary,
   },
   scrollContent: {
     paddingHorizontal: 20,
@@ -332,12 +338,12 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#666',
+    color: colors.textTertiary,
     marginTop: 20,
   },
   emptyDesc: {
     fontSize: 14,
-    color: '#444',
+    color: colors.textMuted,
     textAlign: 'center',
     marginTop: 8,
     lineHeight: 20,
@@ -348,10 +354,10 @@ const styles = StyleSheet.create({
   previewWrapper: {
     overflow: 'hidden',
     marginTop: 16,
-    backgroundColor: '#1A1A1A',
+    backgroundColor: colors.card,
   },
   previewLabel: {
-    color: '#888',
+    color: colors.textSecondary,
     fontSize: 13,
     marginTop: 8,
     marginBottom: 4,
@@ -364,9 +370,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#2c2c2c',
+    backgroundColor: colors.pickBg,
     borderWidth: 2,
-    borderColor: '#717171',
+    borderColor: colors.pickBorder,
     borderStyle: 'dashed',
     borderRadius: 60,
     paddingVertical: 16,
@@ -375,7 +381,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   pickBtnText: {
-    color: '#fff',
+    color: colors.textPrimary,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -386,7 +392,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   presetTitle: {
-    color: '#ccc',
+    color: colors.qualityTitle,
     fontSize: 16,
     fontWeight: '600',
     marginBottom: 12,
@@ -396,24 +402,24 @@ const styles = StyleSheet.create({
     paddingRight: 4,
   },
   presetChip: {
-    backgroundColor: '#1A1A1A',
+    backgroundColor: colors.card,
     borderWidth: 1,
-    borderColor: '#333',
+    borderColor: colors.border2,
     borderRadius: 60,
     paddingHorizontal: 18,
     paddingVertical: 11,
   },
   presetChipActive: {
-    backgroundColor: ACCENT + '25',
-    borderColor: ACCENT,
+    backgroundColor: accent + '25',
+    borderColor: accent,
   },
   presetChipText: {
-    color: '#888',
+    color: colors.textSecondary,
     fontSize: 14,
     fontWeight: '700',
   },
   presetChipTextActive: {
-    color: ACCENT,
+    color: accent,
   },
 
   // Apply Button
@@ -421,7 +427,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: ACCENT,
+    backgroundColor: accent,
     borderRadius: 60,
     paddingVertical: 16,
     marginTop: 18,
@@ -456,7 +462,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   resultName: {
-    color: '#fff',
+    color: colors.textPrimary,
     fontSize: 15,
     fontWeight: '700',
     textAlign: 'center',
@@ -466,15 +472,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: ACCENT + '20',
     borderRadius: 60,
     borderWidth: 1,
-    borderColor: ACCENT + '40',
     paddingVertical: 14,
     gap: 10,
   },
   successText: {
-    color: ACCENT,
     fontSize: 16,
     fontWeight: '700',
   },
@@ -488,13 +491,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: colors.saveBtnBg,
     borderRadius: 60,
     paddingVertical: 16,
     gap: 10,
   },
   saveBtnText: {
-    color: '#24bd6c',
+    color: colors.saveBtnText,
     fontSize: 16,
     fontWeight: '700',
   },
@@ -503,13 +506,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: colors.shareBtnBg,
     borderRadius: 60,
     paddingVertical: 16,
     gap: 10,
   },
   shareBtnText: {
-    color: '#2E86DE',
+    color: colors.shareBtnText,
     fontSize: 16,
     fontWeight: '700',
   },
@@ -517,16 +520,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#1A1A1A',
+    backgroundColor: colors.retryBg,
     borderWidth: 1,
-    borderColor: '#333',
+    borderColor: colors.border2,
     borderRadius: 60,
     paddingVertical: 16,
     marginTop: 12,
     gap: 10,
   },
   retryBtnText: {
-    color: '#fff',
+    color: colors.textPrimary,
     fontSize: 16,
     fontWeight: '600',
   },

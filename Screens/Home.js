@@ -9,10 +9,11 @@ import {
   Modal,
   Pressable,
 } from 'react-native';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { MaterialIcons, MaterialCommunityIcons, AntDesign, FontAwesome5, Ionicons } from '@expo/vector-icons';
 import { BlurView } from '@react-native-community/blur';
 import { Repeat } from 'lucide-react-native';
+import { useTheme } from '../Services/ThemeContext';
 
 const CARDS = [
   {
@@ -136,6 +137,8 @@ const FEATURES = [
 
 const Home = ({ navigation }) => {
   const [infoVisible, setInfoVisible] = useState(false);
+  const { colors, isDark, toggleTheme } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
 
   return (
     <View style={styles.container}>
@@ -143,9 +146,18 @@ const Home = ({ navigation }) => {
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.heading}>Tools</Text>
-        <TouchableOpacity onPress={() => setInfoVisible(true)} style={styles.infoBtn} activeOpacity={0.7}>
-          <Ionicons name="information-circle-outline" size={28} color="#aaa" />
-        </TouchableOpacity>
+        <View style={styles.headerRight}>
+          <TouchableOpacity onPress={toggleTheme} style={styles.themeBtn} activeOpacity={0.7}>
+            <Ionicons
+              name={isDark ? 'sunny-outline' : 'moon-outline'}
+              size={24}
+              color={colors.sectionSubtitle}
+            />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => setInfoVisible(true)} style={styles.infoBtn} activeOpacity={0.7}>
+            <Ionicons name="information-circle-outline" size={28} color={colors.sectionSubtitle} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView
@@ -172,14 +184,14 @@ const Home = ({ navigation }) => {
         onRequestClose={() => setInfoVisible(false)}
       >
         <Pressable style={styles.modalOverlay} onPress={() => setInfoVisible(false)}>
-          <BlurView blurType="dark" blurAmount={10} style={StyleSheet.absoluteFillObject} />
+          <BlurView blurType={colors.blurType} blurAmount={10} style={StyleSheet.absoluteFillObject} />
           <Pressable style={styles.modalBox} onPress={() => {}}>
 
             {/* Modal Header */}
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>About This App</Text>
               <TouchableOpacity onPress={() => setInfoVisible(false)} activeOpacity={0.7}>
-                <Ionicons name="close" size={24} color="#aaa" />
+                <Ionicons name="close" size={24} color={colors.sectionSubtitle} />
               </TouchableOpacity>
             </View>
 
@@ -215,10 +227,10 @@ const Home = ({ navigation }) => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: colors.bg,
   },
 
   // Header
@@ -233,7 +245,15 @@ const styles = StyleSheet.create({
   heading: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#fff',
+    color: colors.textPrimary,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  themeBtn: {
+    padding: 4,
   },
   infoBtn: {
     padding: 4,
@@ -270,7 +290,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 18,
     fontWeight: '700',
-    color: '#fff',
+    color: colors.textPrimary,
   },
 
   // Modal
@@ -279,7 +299,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalBox: {
-    backgroundColor: '#111',
+    backgroundColor: colors.modalBg,
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     paddingHorizontal: 20,
@@ -296,19 +316,22 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 22,
     fontWeight: '800',
-    color: '#fff',
+    color: colors.textPrimary,
   },
   modalSubtitle: {
     fontSize: 13,
-    color: '#666',
+    color: colors.textTertiary,
     marginBottom: 20,
     lineHeight: 18,
   },
 
+  featureScroll: {
+    flexShrink: 1,
+  },
   featureRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: '#1A1A1A',
+    backgroundColor: colors.card,
     borderRadius: 16,
     borderWidth: 1,
     padding: 14,
@@ -328,12 +351,12 @@ const styles = StyleSheet.create({
   featureTitle: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#fff',
+    color: colors.textPrimary,
     marginBottom: 3,
   },
   featureDesc: {
     fontSize: 13,
-    color: '#888',
+    color: colors.textSecondary,
     lineHeight: 18,
   },
 
@@ -341,17 +364,17 @@ const styles = StyleSheet.create({
   creditRow: {
     alignItems: 'center',
     marginTop: 24,
-    marginBottom:50,
+    marginBottom: 50,
     gap: 4,
   },
   creditText: {
     fontSize: 12,
-    color: '#555',
+    color: colors.textSecondary,
   },
   creditName: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#ffffff',
+    color: colors.textPrimary,
   },
 });
 

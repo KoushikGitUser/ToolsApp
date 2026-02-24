@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -17,8 +17,10 @@ import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import * as MediaLibrary from 'expo-media-library';
 import * as Sharing from 'expo-sharing';
 import { File } from 'expo-file-system';
+import { useTheme } from '../Services/ThemeContext';
 
 const ACCENT = '#2E86DE';
+const ACCENT_LIGHT = '#5BA4E8';
 
 const FORMATS = [
   { label: 'JPG', value: SaveFormat.JPEG, ext: 'jpg', icon: 'file-jpg-box' },
@@ -45,6 +47,10 @@ const ImageFormatConverter = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
   const [originalSize, setOriginalSize] = useState(null);
   const [convertedSize, setConvertedSize] = useState(null);
+
+  const { colors, isDark } = useTheme();
+  const accent = isDark ? ACCENT : ACCENT_LIGHT;
+  const styles = useMemo(() => createStyles(colors, accent), [colors, accent]);
 
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -130,7 +136,6 @@ const ImageFormatConverter = ({ navigation }) => {
 
   const shareImage = async () => {
     if (!convertedUri) return;
-    const format = FORMATS.find((f) => f.label === targetFormat);
     const mimeType = targetFormat === 'PNG' ? 'image/png' : targetFormat === 'WEBP' ? 'image/webp' : 'image/jpeg';
     await Sharing.shareAsync(convertedUri, { mimeType });
   };
@@ -149,7 +154,7 @@ const ImageFormatConverter = ({ navigation }) => {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={24} color="#fff" />
+          <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.heading}>Format Converter</Text>
       </View>
@@ -161,7 +166,7 @@ const ImageFormatConverter = ({ navigation }) => {
         {/* Empty State */}
         {!image && (
           <View style={styles.emptyState}>
-            <MaterialCommunityIcons name="file-image" size={64} color="#333" />
+            <MaterialCommunityIcons name="file-image" size={64} color={colors.emptyIcon} />
             <Text style={styles.emptyTitle}>No image selected</Text>
             <Text style={styles.emptyDesc}>
               Pick an image to convert its format
@@ -194,7 +199,7 @@ const ImageFormatConverter = ({ navigation }) => {
                 <MaterialCommunityIcons
                   name={currentFormat === 'PNG' ? 'file-png-box' : currentFormat === 'WEBP' ? 'file-image' : 'file-jpg-box'}
                   size={22}
-                  color={ACCENT}
+                  color={accent}
                 />
                 <Text style={styles.formatBadgeText}>{currentFormat}</Text>
               </View>
@@ -202,17 +207,17 @@ const ImageFormatConverter = ({ navigation }) => {
             {targetFormat && (
               <>
                 <View style={styles.arrowContainer}>
-                  <Ionicons name="arrow-forward" size={20} color="#555" />
+                  <Ionicons name="arrow-forward" size={20} color={colors.textSecondary} />
                 </View>
                 <View style={styles.formatCard}>
                   <Text style={styles.formatCardLabel}>Target Format</Text>
-                  <View style={[styles.formatBadge, { backgroundColor: ACCENT + '20', borderColor: ACCENT + '40' }]}>
+                  <View style={[styles.formatBadge, { backgroundColor: accent + '20', borderColor: accent + '40' }]}>
                     <MaterialCommunityIcons
                       name={FORMATS.find((f) => f.label === targetFormat)?.icon || 'file-image'}
                       size={22}
-                      color={ACCENT}
+                      color={accent}
                     />
-                    <Text style={[styles.formatBadgeText, { color: ACCENT }]}>{targetFormat}</Text>
+                    <Text style={[styles.formatBadgeText, { color: accent }]}>{targetFormat}</Text>
                   </View>
                 </View>
               </>
@@ -229,7 +234,7 @@ const ImageFormatConverter = ({ navigation }) => {
             </View>
             <View style={styles.sizeCard}>
               <Text style={styles.sizeLabel}>Converted</Text>
-              <Text style={[styles.sizeValue, convertedSize ? { color: ACCENT } : null]}>
+              <Text style={[styles.sizeValue, convertedSize ? { color: accent } : null]}>
                 {formatSize(convertedSize)}
               </Text>
             </View>
@@ -238,7 +243,7 @@ const ImageFormatConverter = ({ navigation }) => {
 
         {/* Pick Image Button */}
         <TouchableOpacity style={styles.pickBtn} onPress={pickImage} activeOpacity={0.8}>
-          <Ionicons name="image-outline" size={22} color="#fff" />
+          <Ionicons name="image-outline" size={22} color={colors.textPrimary} />
           <Text style={styles.pickBtnText}>
             {!image ? 'Pick Image' : 'Change Image'}
           </Text>
@@ -262,7 +267,7 @@ const ImageFormatConverter = ({ navigation }) => {
                   <MaterialCommunityIcons
                     name={fmt.icon}
                     size={22}
-                    color={targetFormat === fmt.label ? ACCENT : '#888'}
+                    color={targetFormat === fmt.label ? accent : colors.textSecondary}
                   />
                   <Text
                     style={[
@@ -301,17 +306,17 @@ const ImageFormatConverter = ({ navigation }) => {
         {convertedUri && (
           <View style={styles.resultSection}>
             <View style={styles.successBadge}>
-              <Ionicons name="checkmark-circle" size={28} color={ACCENT} />
+              <Ionicons name="checkmark-circle" size={28} color={accent} />
               <Text style={styles.successText}>Converted to {targetFormat}!</Text>
             </View>
 
             <View style={styles.actionRow}>
               <TouchableOpacity style={styles.saveBtn} onPress={saveImage} activeOpacity={0.8}>
-                <Ionicons name="download-outline" size={20} color="#24bd6c" />
+                <Ionicons name="download-outline" size={20} color={colors.saveBtnText} />
                 <Text style={styles.saveBtnText}>Save</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.shareBtn} onPress={shareImage} activeOpacity={0.8}>
-                <Ionicons name="share-outline" size={20} color="#2E86DE" />
+                <Ionicons name="share-outline" size={20} color={colors.shareBtnText} />
                 <Text style={styles.shareBtnText}>Share</Text>
               </TouchableOpacity>
             </View>
@@ -321,7 +326,7 @@ const ImageFormatConverter = ({ navigation }) => {
               onPress={() => { setConvertedUri(null); setConvertedSize(null); setTargetFormat(null); }}
               activeOpacity={0.8}
             >
-              <Ionicons name="refresh" size={20} color="#fff" />
+              <Ionicons name="refresh" size={20} color={colors.textPrimary} />
               <Text style={styles.retryBtnText}>Convert Again</Text>
             </TouchableOpacity>
           </View>
@@ -331,10 +336,10 @@ const ImageFormatConverter = ({ navigation }) => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors, accent) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: colors.bg,
   },
   header: {
     flexDirection: 'row',
@@ -349,7 +354,7 @@ const styles = StyleSheet.create({
   heading: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#fff',
+    color: colors.textPrimary,
   },
   scrollContent: {
     paddingHorizontal: 20,
@@ -365,12 +370,12 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#666',
+    color: colors.textTertiary,
     marginTop: 20,
   },
   emptyDesc: {
     fontSize: 14,
-    color: '#444',
+    color: colors.textMuted,
     textAlign: 'center',
     marginTop: 8,
     lineHeight: 20,
@@ -382,7 +387,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
     borderRadius: 16,
     overflow: 'hidden',
-    backgroundColor: '#1A1A1A',
+    backgroundColor: colors.card,
   },
   preview: {
     width: '100%',
@@ -393,7 +398,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 12,
     left: 12,
-    backgroundColor: ACCENT,
+    backgroundColor: accent,
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 20,
@@ -413,15 +418,15 @@ const styles = StyleSheet.create({
   },
   formatCard: {
     flex: 1,
-    backgroundColor: '#1A1A1A',
+    backgroundColor: colors.card,
     borderRadius: 76,
     borderWidth: 1,
-    borderColor: '#2A2A2A',
+    borderColor: colors.border,
     padding: 14,
     alignItems: 'center',
   },
   formatCardLabel: {
-    color: '#888',
+    color: colors.textSecondary,
     fontSize: 11,
     fontWeight: '600',
     marginBottom: 8,
@@ -429,16 +434,16 @@ const styles = StyleSheet.create({
   formatBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#111',
+    backgroundColor: colors.inputBg,
     borderRadius: 60,
     borderWidth: 1,
-    borderColor: '#333',
+    borderColor: colors.border2,
     paddingHorizontal: 14,
     paddingVertical: 8,
     gap: 6,
   },
   formatBadgeText: {
-    color: '#fff',
+    color: colors.textPrimary,
     fontSize: 15,
     fontWeight: '800',
   },
@@ -454,21 +459,21 @@ const styles = StyleSheet.create({
   },
   sizeCard: {
     flex: 1,
-    backgroundColor: '#1A1A1A',
+    backgroundColor: colors.card,
     borderRadius: 62,
     borderWidth: 1,
-    borderColor: '#2A2A2A',
+    borderColor: colors.border,
     paddingVertical: 12,
     alignItems: 'center',
   },
   sizeLabel: {
-    color: '#888',
+    color: colors.textSecondary,
     fontSize: 11,
     fontWeight: '600',
     marginBottom: 4,
   },
   sizeValue: {
-    color: '#fff',
+    color: colors.textPrimary,
     fontSize: 15,
     fontWeight: '800',
   },
@@ -478,9 +483,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#2c2c2c',
+    backgroundColor: colors.pickBg,
     borderWidth: 2,
-    borderColor: '#717171',
+    borderColor: colors.pickBorder,
     borderStyle: 'dashed',
     borderRadius: 60,
     paddingVertical: 16,
@@ -488,7 +493,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   pickBtnText: {
-    color: '#fff',
+    color: colors.textPrimary,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -498,7 +503,7 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   formatTitle: {
-    color: '#ccc',
+    color: colors.qualityTitle,
     fontSize: 16,
     fontWeight: '600',
     marginBottom: 12,
@@ -509,25 +514,25 @@ const styles = StyleSheet.create({
   },
   formatChip: {
     flex: 1,
-    backgroundColor: '#1A1A1A',
+    backgroundColor: colors.card,
     borderWidth: 1,
-    borderColor: '#333',
+    borderColor: colors.border2,
     borderRadius: 76,
     paddingVertical: 18,
     alignItems: 'center',
     gap: 8,
   },
   formatChipActive: {
-    backgroundColor: ACCENT + '20',
-    borderColor: ACCENT,
+    backgroundColor: accent + '20',
+    borderColor: accent,
   },
   formatChipText: {
-    color: '#888',
+    color: colors.textSecondary,
     fontSize: 15,
     fontWeight: '800',
   },
   formatChipTextActive: {
-    color: ACCENT,
+    color: accent,
   },
 
   // Convert Button
@@ -535,7 +540,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: ACCENT,
+    backgroundColor: accent,
     borderRadius: 60,
     paddingVertical: 16,
     marginTop: 16,
@@ -558,15 +563,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: ACCENT + '20',
+    backgroundColor: accent + '20',
     borderRadius: 60,
     borderWidth: 1,
-    borderColor: ACCENT + '40',
+    borderColor: accent + '40',
     paddingVertical: 14,
     gap: 10,
   },
   successText: {
-    color: ACCENT,
+    color: accent,
     fontSize: 16,
     fontWeight: '700',
   },
@@ -580,13 +585,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: colors.saveBtnBg,
     borderRadius: 60,
     paddingVertical: 16,
     gap: 10,
   },
   saveBtnText: {
-    color: '#24bd6c',
+    color: colors.saveBtnText,
     fontSize: 16,
     fontWeight: '700',
   },
@@ -595,13 +600,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: colors.shareBtnBg,
     borderRadius: 60,
     paddingVertical: 16,
     gap: 10,
   },
   shareBtnText: {
-    color: '#2E86DE',
+    color: colors.shareBtnText,
     fontSize: 16,
     fontWeight: '700',
   },
@@ -609,16 +614,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#1A1A1A',
+    backgroundColor: colors.retryBg,
     borderWidth: 1,
-    borderColor: '#333',
+    borderColor: colors.border2,
     borderRadius: 60,
     paddingVertical: 16,
     marginTop: 12,
     gap: 10,
   },
   retryBtnText: {
-    color: '#fff',
+    color: colors.textPrimary,
     fontSize: 16,
     fontWeight: '600',
   },

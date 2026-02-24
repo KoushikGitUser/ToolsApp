@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -18,8 +18,10 @@ import { Audio as CompressorAudio } from 'react-native-compressor';
 import * as Sharing from 'expo-sharing';
 import { File } from 'expo-file-system';
 import { useAudioPlayer, useAudioPlayerStatus, setAudioModeAsync } from 'expo-audio';
+import { useTheme } from '../Services/ThemeContext';
 
 const ACCENT = '#cb0086';
+const ACCENT_LIGHT = '#E040A0';
 
 const QUALITY_OPTIONS = [
   { label: '10%', value: 0.1 },
@@ -47,14 +49,17 @@ const AudioCompressor = ({ navigation }) => {
   const originalDurationSec = useRef(null);
   const justPicked = useRef(false);
 
+  const { colors, isDark } = useTheme();
+  const accent = isDark ? ACCENT : ACCENT_LIGHT;
+  const styles = useMemo(() => createStyles(colors, accent), [colors, accent]);
+
   const player = useAudioPlayer(null);
   const status = useAudioPlayerStatus(player);
-  // iOS silent mode support
+
   useEffect(() => {
     setAudioModeAsync({ playsInSilentModeIOS: true });
   }, []);
 
-  // Capture original duration after picking a new file
   useEffect(() => {
     if (justPicked.current && status.duration > 0) {
       originalDurationSec.current = status.duration;
@@ -62,7 +67,6 @@ const AudioCompressor = ({ navigation }) => {
     }
   }, [status.duration]);
 
-  // Reset play state when audio finishes
   useEffect(() => {
     if (status.didJustFinish) {
       player.seekTo(0);
@@ -217,7 +221,7 @@ const AudioCompressor = ({ navigation }) => {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={24} color="#fff" />
+          <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.heading}>Audio Compressor</Text>
       </View>
@@ -234,7 +238,7 @@ const AudioCompressor = ({ navigation }) => {
           {/* Empty State */}
           {!audio && (
             <View style={styles.emptyState}>
-              <Ionicons name="musical-notes" size={64} color="#333" />
+              <Ionicons name="musical-notes" size={64} color={colors.emptyIcon} />
               <Text style={styles.emptyTitle}>No audio selected</Text>
               <Text style={styles.emptyDesc}>
                 Pick an audio file to compress it
@@ -247,7 +251,7 @@ const AudioCompressor = ({ navigation }) => {
             <View style={styles.playerCard}>
               <View style={styles.playerTop}>
                 <View style={styles.audioIconCircle}>
-                  <Ionicons name="musical-note" size={28} color={ACCENT} />
+                  <Ionicons name="musical-note" size={28} color={accent} />
                 </View>
                 <View style={styles.audioInfo}>
                   <Text style={styles.audioName} numberOfLines={1}>
@@ -304,7 +308,7 @@ const AudioCompressor = ({ navigation }) => {
               {compressedSize ? (
                 <View style={styles.sizeCard}>
                   <Text style={styles.sizeLabel}>Compressed</Text>
-                  <Text style={[styles.sizeValue, { color: ACCENT }]}>{formatSize(compressedSize)}</Text>
+                  <Text style={[styles.sizeValue, { color: accent }]}>{formatSize(compressedSize)}</Text>
                 </View>
               ) : (
                 <View style={styles.sizeCard}>
@@ -313,9 +317,9 @@ const AudioCompressor = ({ navigation }) => {
                 </View>
               )}
               {reductionPercent !== null && (
-                <View style={[styles.sizeCard, { backgroundColor: ACCENT + '20', borderColor: ACCENT + '40' }]}>
+                <View style={[styles.sizeCard, { backgroundColor: accent + '20', borderColor: accent + '40' }]}>
                   <Text style={styles.sizeLabel}>Reduced</Text>
-                  <Text style={[styles.sizeValue, { color: ACCENT }]}>{reductionPercent}%</Text>
+                  <Text style={[styles.sizeValue, { color: accent }]}>{reductionPercent}%</Text>
                 </View>
               )}
             </View>
@@ -323,7 +327,7 @@ const AudioCompressor = ({ navigation }) => {
 
           {/* Pick Audio Button */}
           <TouchableOpacity style={styles.pickBtn} onPress={pickAudio} activeOpacity={0.8}>
-            <Ionicons name="document-outline" size={22} color="#fff" />
+            <Ionicons name="document-outline" size={22} color={colors.textPrimary} />
             <Text style={styles.pickBtnText}>
               {!audio ? 'Pick Audio' : 'Change Audio'}
             </Text>
@@ -352,7 +356,7 @@ const AudioCompressor = ({ navigation }) => {
           {/* Quality Selection */}
           {audio && !compressedUri && mode === 'quality' && (
             <View style={styles.qualitySection}>
-              <Text style={styles.qualityTitle}>Select Quality: <Text style={{ color: ACCENT }}>{Math.round(quality * 100)}%</Text></Text>
+              <Text style={styles.qualityTitle}>Select Quality: <Text style={{ color: accent }}>{Math.round(quality * 100)}%</Text></Text>
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
@@ -390,7 +394,7 @@ const AudioCompressor = ({ navigation }) => {
                 <TextInput
                   style={styles.targetInput}
                   placeholder="e.g. 500"
-                  placeholderTextColor="#555"
+                  placeholderTextColor={colors.textSecondary}
                   keyboardType="numeric"
                   value={targetSize}
                   onChangeText={setTargetSize}
@@ -438,12 +442,12 @@ const AudioCompressor = ({ navigation }) => {
           {compressedUri && (
             <View style={styles.resultSection}>
               <View style={styles.successBadge}>
-                <Ionicons name="checkmark-circle" size={28} color={ACCENT} />
+                <Ionicons name="checkmark-circle" size={28} color={accent} />
                 <Text style={styles.successText}>Audio Compressed!</Text>
               </View>
 
               <TouchableOpacity style={styles.shareBtn} onPress={shareAudio} activeOpacity={0.8}>
-                <Ionicons name="share-outline" size={20} color="#24bd6c" />
+                <Ionicons name="share-outline" size={20} color={colors.shareBtnText} />
                 <Text style={styles.shareBtnText}>Save / Share Audio</Text>
               </TouchableOpacity>
 
@@ -457,7 +461,7 @@ const AudioCompressor = ({ navigation }) => {
                 }}
                 activeOpacity={0.8}
               >
-                <Ionicons name="refresh" size={20} color="#fff" />
+                <Ionicons name="refresh" size={20} color={colors.textPrimary} />
                 <Text style={styles.retryBtnText}>Compress Again</Text>
               </TouchableOpacity>
             </View>
@@ -468,10 +472,10 @@ const AudioCompressor = ({ navigation }) => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors, accent) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: colors.bg,
   },
   header: {
     flexDirection: 'row',
@@ -486,7 +490,7 @@ const styles = StyleSheet.create({
   heading: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#fff',
+    color: colors.textPrimary,
   },
   scrollContent: {
     paddingHorizontal: 20,
@@ -502,12 +506,12 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#666',
+    color: colors.textTertiary,
     marginTop: 20,
   },
   emptyDesc: {
     fontSize: 14,
-    color: '#444',
+    color: colors.textMuted,
     textAlign: 'center',
     marginTop: 8,
     lineHeight: 20,
@@ -517,11 +521,11 @@ const styles = StyleSheet.create({
   // Audio Player Card
   playerCard: {
     marginTop: 16,
-    backgroundColor: '#1A1A1A',
+    backgroundColor: colors.card,
     borderRadius: 20,
     padding: 18,
     borderWidth: 1,
-    borderColor: '#2A2A2A',
+    borderColor: colors.border,
   },
   playerTop: {
     flexDirection: 'row',
@@ -532,7 +536,7 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 26,
-    backgroundColor: ACCENT + '20',
+    backgroundColor: accent + '20',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -540,12 +544,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   audioName: {
-    color: '#fff',
+    color: colors.textPrimary,
     fontSize: 15,
     fontWeight: '700',
   },
   audioDuration: {
-    color: '#888',
+    color: colors.textSecondary,
     fontSize: 13,
     fontWeight: '600',
     marginTop: 2,
@@ -554,20 +558,20 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: ACCENT,
+    backgroundColor: accent,
     alignItems: 'center',
     justifyContent: 'center',
   },
   playbackBarBg: {
     height: 4,
-    backgroundColor: '#333',
+    backgroundColor: colors.border2,
     borderRadius: 2,
     marginTop: 16,
     overflow: 'hidden',
   },
   playbackBarFill: {
     height: '100%',
-    backgroundColor: ACCENT,
+    backgroundColor: accent,
     borderRadius: 2,
   },
   playbackTimeRow: {
@@ -576,13 +580,13 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   playbackTime: {
-    color: '#666',
+    color: colors.textTertiary,
     fontSize: 12,
     fontWeight: '600',
   },
   playbackToggle: {
     flexDirection: 'row',
-    backgroundColor: '#111',
+    backgroundColor: colors.toggleInnerBg,
     borderRadius: 60,
     padding: 3,
     marginTop: 12,
@@ -595,10 +599,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   playbackToggleBtnActive: {
-    backgroundColor: ACCENT,
+    backgroundColor: accent,
   },
   playbackToggleText: {
-    color: '#888',
+    color: colors.textSecondary,
     fontSize: 13,
     fontWeight: '700',
   },
@@ -614,21 +618,21 @@ const styles = StyleSheet.create({
   },
   sizeCard: {
     flex: 1,
-    backgroundColor: '#1A1A1A',
+    backgroundColor: colors.card,
     borderRadius: 62,
     borderWidth: 1,
-    borderColor: '#2A2A2A',
+    borderColor: colors.border,
     paddingVertical: 12,
     alignItems: 'center',
   },
   sizeLabel: {
-    color: '#888',
+    color: colors.textSecondary,
     fontSize: 11,
     fontWeight: '600',
     marginBottom: 4,
   },
   sizeValue: {
-    color: '#fff',
+    color: colors.textPrimary,
     fontSize: 15,
     fontWeight: '800',
   },
@@ -638,9 +642,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#2c2c2c',
+    backgroundColor: colors.pickBg,
     borderWidth: 2,
-    borderColor: '#717171',
+    borderColor: colors.pickBorder,
     borderStyle: 'dashed',
     borderRadius: 60,
     paddingVertical: 16,
@@ -648,7 +652,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   pickBtnText: {
-    color: '#fff',
+    color: colors.textPrimary,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -656,7 +660,7 @@ const styles = StyleSheet.create({
   // Mode Toggle
   modeToggle: {
     flexDirection: 'row',
-    backgroundColor: '#1A1A1A',
+    backgroundColor: colors.card,
     borderRadius: 60,
     padding: 4,
     marginTop: 16,
@@ -669,10 +673,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modeBtnActive: {
-    backgroundColor: ACCENT,
+    backgroundColor: accent,
   },
   modeBtnText: {
-    color: '#888',
+    color: colors.textSecondary,
     fontSize: 14,
     fontWeight: '700',
   },
@@ -691,19 +695,19 @@ const styles = StyleSheet.create({
   },
   targetInput: {
     flex: 1,
-    backgroundColor: '#1A1A1A',
+    backgroundColor: colors.inputBg,
     borderWidth: 1,
-    borderColor: '#333',
+    borderColor: colors.border2,
     borderRadius: 60,
     paddingHorizontal: 20,
     paddingVertical: 14,
-    color: '#fff',
+    color: colors.textPrimary,
     fontSize: 16,
     fontWeight: '600',
   },
   unitToggle: {
     flexDirection: 'row',
-    backgroundColor: '#1A1A1A',
+    backgroundColor: colors.inputBg,
     borderRadius: 60,
     padding: 4,
   },
@@ -713,10 +717,10 @@ const styles = StyleSheet.create({
     borderRadius: 60,
   },
   unitBtnActive: {
-    backgroundColor: ACCENT,
+    backgroundColor: accent,
   },
   unitBtnText: {
-    color: '#888',
+    color: colors.textSecondary,
     fontSize: 14,
     fontWeight: '700',
   },
@@ -729,7 +733,7 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   qualityTitle: {
-    color: '#ccc',
+    color: colors.qualityTitle,
     fontSize: 16,
     fontWeight: '600',
     marginBottom: 12,
@@ -739,24 +743,24 @@ const styles = StyleSheet.create({
     paddingRight: 20,
   },
   qualityChip: {
-    backgroundColor: '#1A1A1A',
+    backgroundColor: colors.card,
     borderWidth: 1,
-    borderColor: '#333',
+    borderColor: colors.border2,
     borderRadius: 60,
     paddingHorizontal: 18,
     paddingVertical: 10,
   },
   qualityChipActive: {
-    backgroundColor: ACCENT + '25',
-    borderColor: ACCENT,
+    backgroundColor: accent + '25',
+    borderColor: accent,
   },
   qualityChipText: {
-    color: '#888',
+    color: colors.textSecondary,
     fontSize: 14,
     fontWeight: '700',
   },
   qualityChipTextActive: {
-    color: ACCENT,
+    color: accent,
   },
 
   // Compress Button
@@ -764,7 +768,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: ACCENT,
+    backgroundColor: accent,
     borderRadius: 60,
     paddingVertical: 16,
     marginTop: 16,
@@ -787,15 +791,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: ACCENT + '20',
+    backgroundColor: accent + '20',
     borderRadius: 60,
     borderWidth: 1,
-    borderColor: ACCENT + '40',
+    borderColor: accent + '40',
     paddingVertical: 14,
     gap: 10,
   },
   successText: {
-    color: ACCENT,
+    color: accent,
     fontSize: 16,
     fontWeight: '700',
   },
@@ -803,14 +807,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: colors.shareBtnBg,
     borderRadius: 60,
     paddingVertical: 16,
     marginTop: 12,
     gap: 10,
   },
   shareBtnText: {
-    color: '#24bd6c',
+    color: colors.shareBtnText,
     fontSize: 16,
     fontWeight: '700',
   },
@@ -818,16 +822,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#1A1A1A',
+    backgroundColor: colors.retryBg,
     borderWidth: 1,
-    borderColor: '#333',
+    borderColor: colors.border2,
     borderRadius: 60,
     paddingVertical: 16,
     marginTop: 12,
     gap: 10,
   },
   retryBtnText: {
-    color: '#fff',
+    color: colors.textPrimary,
     fontSize: 16,
     fontWeight: '600',
   },

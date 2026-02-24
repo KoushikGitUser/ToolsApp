@@ -4,6 +4,7 @@ import {
   Animated,
   Dimensions,
   PanResponder,
+  View,
 } from "react-native";
 import { useEffect, useRef, useState } from "react";
 import { toastEmitter } from "../../Services/toast";
@@ -14,6 +15,15 @@ import {
   Info,
   TriangleAlert,
 } from "lucide-react-native";
+import { useTheme } from "../../Services/ThemeContext";
+
+const TYPE_COLORS = {
+  success: "#03B32F",
+  alert: "#FFA412",
+  info: "#4A90D9",
+  normal: "#888888",
+  error: "#D00B0B",
+};
 
 const Toaster = () => {
   const [toast, setToast] = useState({
@@ -23,6 +33,8 @@ const Toaster = () => {
     type: "success",
     duration: 3000,
   });
+
+  const { colors } = useTheme();
 
   const slideAnim = useRef(new Animated.Value(-170)).current;
   const hideTimer = useRef(null);
@@ -97,27 +109,32 @@ const Toaster = () => {
 
   if (!toast.visible) return null;
 
+  const typeColor = TYPE_COLORS[toast.type] || TYPE_COLORS.normal;
+
+  const IconComponent = toast.type === "success" ? BadgeCheck
+    : toast.type === "alert" ? TriangleAlert
+    : toast.type === "info" ? Info
+    : toast.type === "normal" ? CircleCheck
+    : CircleX;
+
   return (
     <Animated.View
       {...panResponder.panHandlers}
-      style={[styles.toast, { transform: [{ translateY: slideAnim }] }]}
+      style={[
+        styles.toast,
+        {
+          backgroundColor: colors.card,
+          borderColor: colors.border2,
+          transform: [{ translateY: slideAnim }],
+        },
+      ]}
     >
-      {toast.type === "success" ? (
-        <BadgeCheck style={{ marginTop: 5 }} color="#03B32F" strokeWidth={1.25} />
-      ) : toast.type === "alert" ? (
-        <TriangleAlert style={{ marginTop: 5 }} color="#FFA412" strokeWidth={1.25} />
-      ) : toast.type === "info" ? (
-        <Info style={{ marginTop: 5 }} color="#4A90D9" strokeWidth={1.25} />
-      ) : toast.type === "normal" ? (
-        <CircleCheck style={{ marginTop: 5 }} color="#888888" strokeWidth={1.25} />
-      ) : (
-        <CircleX style={{ marginTop: 5 }} color="#D00B0B" strokeWidth={1.25} />
-      )}
-
+      <View style={[styles.indicator, { backgroundColor: typeColor }]} />
+      <IconComponent style={{ marginTop: 3 }} color={typeColor} strokeWidth={1.25} size={22} />
       <Animated.View style={styles.textContainer}>
-        <Text style={styles.textTitle}>{toast.title}</Text>
+        <Text style={[styles.textTitle, { color: colors.textPrimary }]}>{toast.title}</Text>
         {toast.description !== "" && (
-          <Text style={styles.textDesc}>{toast.description}</Text>
+          <Text style={[styles.textDesc, { color: colors.sectionSubtitle }]}>{toast.description}</Text>
         )}
       </Animated.View>
     </Animated.View>
@@ -132,20 +149,23 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: 20,
     paddingVertical: 14,
-    paddingHorizontal: 20,
-    backgroundColor: "#1A1A1A",
+    paddingHorizontal: 16,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: "#333",
     elevation: 10,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.15,
     shadowRadius: 6,
     zIndex: 9999999999,
     flexDirection: "row",
-    alignItems: "flex-start",
+    alignItems: "center",
     gap: 10,
+  },
+  indicator: {
+    width: 3,
+    height: 36,
+    borderRadius: 2,
   },
   textContainer: {
     flex: 1,
@@ -153,12 +173,10 @@ const styles = StyleSheet.create({
   },
   textTitle: {
     fontWeight: "700",
-    fontSize: 16,
-    color: "#fff",
+    fontSize: 15,
   },
   textDesc: {
-    color: "#aaa",
-    fontSize: 14,
+    fontSize: 13,
     marginTop: 2,
   },
 });

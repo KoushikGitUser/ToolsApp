@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -18,8 +18,10 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Print from 'expo-print';
 import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
+import { useTheme } from '../Services/ThemeContext';
 
 const ACCENT = '#ff0000';
+const ACCENT_LIGHT = '#FF5252';
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const THUMB_SIZE = 140;
 
@@ -28,6 +30,10 @@ const ImageToPdf = ({ navigation }) => {
   const [pdfUri, setPdfUri] = useState(null);
   const [loading, setLoading] = useState(false);
   const [previewIndex, setPreviewIndex] = useState(null);
+
+  const { colors, isDark } = useTheme();
+  const accent = isDark ? ACCENT : ACCENT_LIGHT;
+  const styles = useMemo(() => createStyles(colors, accent), [colors, accent]);
 
   const pickImages = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -139,7 +145,7 @@ const ImageToPdf = ({ navigation }) => {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={24} color="#fff" />
+          <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.heading}>Image to PDF</Text>
       </View>
@@ -151,7 +157,7 @@ const ImageToPdf = ({ navigation }) => {
         {/* Empty State */}
         {images.length === 0 && (
           <View style={styles.emptyState}>
-            <MaterialCommunityIcons name="file-image" size={64} color="#333" />
+            <MaterialCommunityIcons name="file-image" size={64} color={colors.emptyIcon} />
             <Text style={styles.emptyTitle}>No images selected</Text>
             <Text style={styles.emptyDesc}>
               Pick images from your gallery to convert them into a PDF document
@@ -199,7 +205,7 @@ const ImageToPdf = ({ navigation }) => {
 
         {/* Pick Images Button */}
         <TouchableOpacity style={styles.pickBtn} onPress={pickImages} activeOpacity={0.8}>
-          <MaterialIcons name="add-photo-alternate" size={22} color="#fff" />
+          <MaterialIcons name="add-photo-alternate" size={22} color={colors.textPrimary} />
           <Text style={styles.pickBtnText}>
             {images.length === 0 ? 'Pick Images' : 'Add More Images'}
           </Text>
@@ -228,12 +234,12 @@ const ImageToPdf = ({ navigation }) => {
         {pdfUri && (
           <View style={styles.resultSection}>
             <View style={styles.successBadge}>
-              <Ionicons name="checkmark-circle" size={28} color={ACCENT} />
+              <Ionicons name="checkmark-circle" size={28} color={accent} />
               <Text style={styles.successText}>PDF Created Successfully!</Text>
             </View>
 
             <TouchableOpacity style={styles.shareBtn} onPress={sharePdf} activeOpacity={0.8}>
-              <Ionicons name="share-outline" size={20} color="#24bd6c" />
+              <Ionicons name="share-outline" size={20} color={colors.shareBtnText} />
               <Text style={styles.shareBtnText}>Save / Share PDF</Text>
             </TouchableOpacity>
           </View>
@@ -273,10 +279,10 @@ const ImageToPdf = ({ navigation }) => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors, accent) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: colors.bg,
   },
   header: {
     flexDirection: 'row',
@@ -291,7 +297,7 @@ const styles = StyleSheet.create({
   heading: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#fff',
+    color: colors.textPrimary,
   },
   scrollContent: {
     paddingHorizontal: 20,
@@ -307,12 +313,12 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#666',
+    color: colors.textTertiary,
     marginTop: 20,
   },
   emptyDesc: {
     fontSize: 14,
-    color: '#444',
+    color: colors.textMuted,
     textAlign: 'center',
     marginTop: 8,
     lineHeight: 20,
@@ -331,7 +337,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   imageSectionTitle: {
-    color: '#aaa',
+    color: colors.sectionSubtitle,
     fontSize: 14,
     fontWeight: '600',
   },
@@ -394,9 +400,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#2c2c2c',
+    backgroundColor: colors.pickBg,
     borderWidth: 2,
-    borderColor: '#717171',
+    borderColor: colors.pickBorder,
     borderStyle: 'dashed',
     borderRadius: 60,
     paddingVertical: 16,
@@ -404,7 +410,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   pickBtnText: {
-    color: '#fff',
+    color: colors.textPrimary,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -414,7 +420,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: ACCENT,
+    backgroundColor: accent,
     borderRadius: 60,
     paddingVertical: 16,
     marginTop: 14,
@@ -437,15 +443,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: ACCENT + '20',
+    backgroundColor: accent + '20',
     borderRadius: 60,
     borderWidth: 1,
-    borderColor: ACCENT + '40',
+    borderColor: accent + '40',
     paddingVertical: 14,
     gap: 10,
   },
   successText: {
-    color: ACCENT,
+    color: accent,
     fontSize: 16,
     fontWeight: '700',
   },
@@ -453,14 +459,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: colors.shareBtnBg,
     borderRadius: 60,
     paddingVertical: 16,
     marginTop: 12,
     gap: 10,
   },
   shareBtnText: {
-    color: '#24bd6c',
+    color: colors.shareBtnText,
     fontSize: 16,
     fontWeight: '700',
   },
