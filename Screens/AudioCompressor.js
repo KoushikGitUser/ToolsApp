@@ -447,7 +447,7 @@ const AudioCompressor = ({ navigation }) => {
               </View>
 
               <TouchableOpacity style={styles.shareBtn} onPress={shareAudio} activeOpacity={0.8}>
-                <Ionicons name="share-outline" size={20} color={colors.shareBtnText} />
+                <Ionicons name="share" size={20} color={colors.shareBtnText} />
                 <Text style={styles.shareBtnText}>Save / Share Audio</Text>
               </TouchableOpacity>
 

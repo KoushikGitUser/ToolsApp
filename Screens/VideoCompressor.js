@@ -420,11 +420,11 @@ const VideoCompressor = ({ navigation }) => {
 
               <View style={styles.actionRow}>
                 <TouchableOpacity style={styles.saveBtn} onPress={saveVideo} activeOpacity={0.8}>
-                  <Ionicons name="download-outline" size={20} color={colors.saveBtnText} />
+                  <Ionicons name="download" size={20} color={colors.saveBtnText} />
                   <Text style={styles.saveBtnText}>Save</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.shareBtn} onPress={shareVideo} activeOpacity={0.8}>
-                  <Ionicons name="share-outline" size={20} color={colors.shareBtnText} />
+                  <Ionicons name="share" size={20} color={colors.shareBtnText} />
                   <Text style={styles.shareBtnText}>Share</Text>
                 </TouchableOpacity>
               </View>

@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,7 @@ import {
   Modal,
   PanResponder,
   Pressable,
+  Animated,
 } from 'react-native';
 
 import { Ionicons, FontAwesome5, MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -55,9 +56,20 @@ const ImageToPdf = ({ navigation }) => {
   const [pageSize, setPageSize] = useState('A4'); // PDF page size
   const [pageSizeModalVisible, setPageSizeModalVisible] = useState(false); // Page size modal
   const [pdfViewerVisible, setPdfViewerVisible] = useState(false); // PDF viewer modal
+  const [isSorting, setIsSorting] = useState(false); // Sorting session state
+  const [selectedImageForSort, setSelectedImageForSort] = useState(null); // Image selected to sort
+  const [sortPositionModalVisible, setSortPositionModalVisible] = useState(false); // Position modal
+  const [applyToAll, setApplyToAll] = useState(false); // Apply edits to all images toggle
+  const [editModalToast, setEditModalToast] = useState(null); // Toast for edit modal
 
   // Ref for capturing the filtered image view
   const imageViewRef = useRef(null);
+
+  // Animation for apply to all toggle
+  const applyToAllAnimation = useRef(new Animated.Value(0)).current;
+
+  // Animation for frame toggle
+  const frameToggleAnimation = useRef(new Animated.Value(0)).current;
 
   // Page size options with dimensions in points (1 inch = 72 points)
   const PAGE_SIZES = {
@@ -147,6 +159,34 @@ const ImageToPdf = ({ navigation }) => {
     setPdfUri(null);
   };
 
+  const startSorting = () => {
+    setIsSorting(true);
+  };
+
+  const doneSorting = () => {
+    setIsSorting(false);
+    setSelectedImageForSort(null);
+  };
+
+  const selectImageToSort = (index) => {
+    setSelectedImageForSort(index);
+    setSortPositionModalVisible(true);
+  };
+
+  const moveImageToPosition = (newPosition) => {
+    if (selectedImageForSort === null) return;
+
+    const newImages = [...images];
+    const [movedImage] = newImages.splice(selectedImageForSort, 1);
+    newImages.splice(newPosition, 0, movedImage);
+
+    setImages(newImages);
+    setPdfUri(null);
+    setSortPositionModalVisible(false);
+    setSelectedImageForSort(null);
+    triggerToast('Sorted', `Image moved to position ${newPosition + 1}`, 'success', 2000);
+  };
+
   const openEditModal = (index) => {
     setEditIndex(index);
     setContrast(1);
@@ -154,6 +194,7 @@ const ImageToPdf = ({ navigation }) => {
     setEditedImage(null);
     setActiveFilter(null);
     setHasChanges(false);
+    setApplyToAll(false);
 
     // Store original image URI for reverting
     const imageUri = images[index]?.uri;
@@ -215,44 +256,88 @@ const ImageToPdf = ({ navigation }) => {
       setOriginalImageUri(null);
       setActiveFilter(null);
       setHasChanges(false);
+      setApplyToAll(false);
       return;
     }
 
     setIsProcessing(true);
 
     try {
-      let result = images[editIndex].uri;
-
-      // If contrast or filter is applied, capture the filtered view
-      if (contrast !== 1 || activeFilter) {
-        if (imageViewRef.current) {
-          // Capture the filtered image view as a file
-          const capturedUri = await captureRef(imageViewRef, {
-            format: 'png',
-            quality: 1,
-            result: 'tmpfile',
-          });
-          result = capturedUri;
-        }
-      }
-
-      // Apply rotation if needed
-      if (rotation !== 0) {
-        const manipulated = await ImageManipulator.manipulateAsync(
-          result,
-          [{ rotate: rotation }],
-          { compress: 1, format: ImageManipulator.SaveFormat.PNG }
-        );
-        result = manipulated.uri;
-      }
-
-      // Update the image in the array
       const updatedImages = [...images];
-      updatedImages[editIndex] = { ...updatedImages[editIndex], uri: result };
+
+      if (applyToAll) {
+        // Apply contrast and filters to current image only
+        let currentImageResult = images[editIndex].uri;
+
+        if (contrast !== 1 || activeFilter) {
+          if (imageViewRef.current) {
+            const capturedUri = await captureRef(imageViewRef, {
+              format: 'png',
+              quality: 1,
+              result: 'tmpfile',
+            });
+            currentImageResult = capturedUri;
+          }
+        }
+
+        // Apply rotation to current image
+        if (rotation !== 0) {
+          const manipulated = await ImageManipulator.manipulateAsync(
+            currentImageResult,
+            [{ rotate: rotation }],
+            { compress: 1, format: ImageManipulator.SaveFormat.PNG }
+          );
+          currentImageResult = manipulated.uri;
+        }
+
+        // Update current image
+        updatedImages[editIndex] = { ...updatedImages[editIndex], uri: currentImageResult };
+
+        // Apply ONLY rotation to all other images
+        if (rotation !== 0) {
+          for (let i = 0; i < updatedImages.length; i++) {
+            if (i !== editIndex) {
+              const manipulated = await ImageManipulator.manipulateAsync(
+                updatedImages[i].uri,
+                [{ rotate: rotation }],
+                { compress: 1, format: ImageManipulator.SaveFormat.PNG }
+              );
+              updatedImages[i] = { ...updatedImages[i], uri: manipulated.uri };
+            }
+          }
+        }
+
+        triggerToast('Success', `Rotation applied to all ${updatedImages.length} images!`, 'success', 2500);
+      } else {
+        // Apply all edits to current image only
+        let result = images[editIndex].uri;
+
+        if (contrast !== 1 || activeFilter) {
+          if (imageViewRef.current) {
+            const capturedUri = await captureRef(imageViewRef, {
+              format: 'png',
+              quality: 1,
+              result: 'tmpfile',
+            });
+            result = capturedUri;
+          }
+        }
+
+        if (rotation !== 0) {
+          const manipulated = await ImageManipulator.manipulateAsync(
+            result,
+            [{ rotate: rotation }],
+            { compress: 1, format: ImageManipulator.SaveFormat.PNG }
+          );
+          result = manipulated.uri;
+        }
+
+        updatedImages[editIndex] = { ...updatedImages[editIndex], uri: result };
+        triggerToast('Success', 'Image saved successfully!', 'success', 2000);
+      }
+
       setImages(updatedImages);
       setPdfUri(null);
-
-      triggerToast('Success', 'Image saved successfully!', 'success', 2000);
 
       // Close modal without reverting (changes saved)
       setEditIndex(null);
@@ -262,6 +347,7 @@ const ImageToPdf = ({ navigation }) => {
       setOriginalImageUri(null);
       setActiveFilter(null);
       setHasChanges(false);
+      setApplyToAll(false);
     } catch (error) {
       console.log('Edit error:', error);
       triggerToast('Error', 'Failed to save image. Please try again.', 'error', 3000);
@@ -470,10 +556,33 @@ const ImageToPdf = ({ navigation }) => {
         {images.length > 0 && (
           <View style={styles.imageSection}>
             <View style={styles.imageSectionHeader}>
-              <Text style={styles.imageSectionTitle}>{images.length} image{images.length > 1 ? 's' : ''} selected</Text>
-              <TouchableOpacity onPress={clearAll} activeOpacity={0.7} style={styles.clearAllBtn}>
-                <Text style={styles.clearAllText}>Clear All</Text>
-              </TouchableOpacity>
+              {isSorting ? (
+                <View style={styles.sortingBadge}>
+                  <MaterialIcons name="sort" size={16} color="#fff" />
+                  <Text style={styles.sortingBadgeText}>Sorting</Text>
+                </View>
+              ) : (
+                <Text style={styles.imageSectionTitle}>{images.length} image{images.length > 1 ? 's' : ''} selected</Text>
+              )}
+              <View style={styles.headerButtonsContainer}>
+                <TouchableOpacity
+                  onPress={clearAll}
+                  activeOpacity={0.7}
+                  style={[styles.clearAllBtn, isSorting && styles.buttonDisabled]}
+                  disabled={isSorting}
+                >
+                  <Text style={styles.clearAllText}>Clear All</Text>
+                </TouchableOpacity>
+                {!isSorting ? (
+                  <TouchableOpacity onPress={startSorting} activeOpacity={0.7} style={styles.sortBtn}>
+                    <Text style={styles.sortBtnText}>Sort</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity onPress={doneSorting} activeOpacity={0.7} style={styles.doneBtn}>
+                    <Text style={styles.doneBtnText}>Done</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
             </View>
             <ScrollView
               horizontal
@@ -481,52 +590,69 @@ const ImageToPdf = ({ navigation }) => {
               contentContainerStyle={styles.horizontalScroll}
             >
               {images.map((img, index) => (
-                <TouchableOpacity
-                  key={index}
-                  activeOpacity={0.9}
-                  onPress={() => setPreviewIndex(index)}
-                >
-                  <View style={styles.thumbWrapper}>
-                    <Image source={{ uri: img.uri }} style={styles.thumb} />
+                <View key={index} style={styles.imageItemContainer}>
+                  <TouchableOpacity
+                    activeOpacity={0.9}
+                    onPress={() => isSorting ? selectImageToSort(index) : setPreviewIndex(index)}
+                  >
+                    <View style={styles.thumbWrapper}>
+                      <Image source={{ uri: img.uri }} style={styles.thumb} />
 
-                    {/* Edit Button - Top Left */}
-                    <TouchableOpacity
-                      style={styles.editBtn}
-                      onPress={() => openEditModal(index)}
-                    >
-                      <MaterialIcons name="edit" size={20} color="#000" />
-                      <Text style={styles.editBtnText}>Edit</Text>
-                    </TouchableOpacity>
+                      {/* Edit Button - Top Left */}
+                      {!isSorting && (
+                        <TouchableOpacity
+                          style={styles.editBtn}
+                          onPress={() => openEditModal(index)}
+                        >
+                          <MaterialIcons name="edit" size={20} color="#000" />
+                          <Text style={styles.editBtnText}>Edit</Text>
+                        </TouchableOpacity>
+                      )}
 
-                    {/* Remove Button - Top Right */}
-                    <TouchableOpacity
-                      style={styles.removeBtn}
-                      onPress={() => removeImage(index)}
-                    >
-                      <Ionicons name="close" size={16} color="#fff" />
-                    </TouchableOpacity>
+                      {/* Remove Button - Top Right */}
+                      {!isSorting && (
+                        <TouchableOpacity
+                          style={styles.removeBtn}
+                          onPress={() => removeImage(index)}
+                        >
+                          <Ionicons name="close" size={16} color="#fff" />
+                        </TouchableOpacity>
+                      )}
 
-                    {/* Index Badge - Bottom Left */}
-                    <View style={styles.indexBadge}>
-                      <Text style={styles.indexText}>{index + 1}</Text>
+                      {/* Index Badge - Bottom Left */}
+                      <View style={styles.indexBadge}>
+                        <Text style={styles.indexText}>{index + 1}</Text>
+                      </View>
+
+                      {/* Expand Button - Bottom Right */}
+                      {!isSorting && (
+                        <TouchableOpacity
+                          style={styles.expandBtn}
+                          onPress={() => setPreviewIndex(index)}
+                        >
+                          <MaterialCommunityIcons name="arrow-expand" size={16} color="#fff" />
+                        </TouchableOpacity>
+                      )}
                     </View>
-
-                    {/* Expand Button - Bottom Right */}
-                    <TouchableOpacity
-                      style={styles.expandBtn}
-                      onPress={() => setPreviewIndex(index)}
-                    >
-                      <MaterialCommunityIcons name="arrow-expand" size={16} color="#fff" />
-                    </TouchableOpacity>
-                  </View>
-                </TouchableOpacity>
+                  </TouchableOpacity>
+                </View>
               ))}
             </ScrollView>
           </View>
         )}
 
+        {/* Sorting Instructions */}
+        {isSorting && (
+          <View style={styles.sortingInstructions}>
+            <MaterialIcons name="info-outline" size={20} color={accent} />
+            <Text style={styles.sortingInstructionsText}>
+              To sort images, press any image you want to sort and then select the position you want the image to be placed.
+            </Text>
+          </View>
+        )}
+
         {/* Pick Images Button */}
-        {!pdfUri && (
+        {!pdfUri && !isSorting && (
           <TouchableOpacity
             style={[styles.pickBtn, images.length >= 15 && styles.pickBtnDisabled]}
             onPress={pickImages}
@@ -541,12 +667,22 @@ const ImageToPdf = ({ navigation }) => {
         )}
 
         {/* Options */}
-        {images.length > 0 && !pdfUri && (
+        {images.length > 0 && !pdfUri && !isSorting && (
           <View style={styles.optionsContainer}>
             {/* Frame Toggle */}
             <TouchableOpacity
               style={styles.frameToggle}
-              onPress={() => setShowFrames(!showFrames)}
+              onPress={() => {
+                const newValue = !showFrames;
+                setShowFrames(newValue);
+
+                // Animate toggle
+                Animated.timing(frameToggleAnimation, {
+                  toValue: newValue ? 1 : 0,
+                  duration: 200,
+                  useNativeDriver: true,
+                }).start();
+              }}
               activeOpacity={0.7}
             >
               <View style={styles.frameToggleContent}>
@@ -554,7 +690,19 @@ const ImageToPdf = ({ navigation }) => {
                 <Text style={styles.frameToggleText}>Show Frames in PDF</Text>
               </View>
               <View style={[styles.toggleSwitch, showFrames && styles.toggleSwitchActive]}>
-                <View style={[styles.toggleThumb, showFrames && styles.toggleThumbActive]} />
+                <Animated.View
+                  style={[
+                    styles.toggleThumb,
+                    {
+                      transform: [{
+                        translateX: frameToggleAnimation.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [0.5, 24.5]
+                        })
+                      }]
+                    }
+                  ]}
+                />
               </View>
             </TouchableOpacity>
 
@@ -575,7 +723,7 @@ const ImageToPdf = ({ navigation }) => {
         )}
 
         {/* Convert Button */}
-        {images.length > 0 && !pdfUri && (
+        {images.length > 0 && !pdfUri && !isSorting && (
           <TouchableOpacity
             style={[styles.convertBtn, loading && styles.btnDisabled]}
             onPress={convertToPdf}
@@ -602,7 +750,7 @@ const ImageToPdf = ({ navigation }) => {
             </View>
 
             <TouchableOpacity style={styles.shareBtn} onPress={sharePdf} activeOpacity={0.8}>
-              <Ionicons name="share-outline" size={20} color={colors.shareBtnText} />
+              <Ionicons name="share" size={20} color={colors.shareBtnText} />
               <Text style={styles.shareBtnText}>Save / Share PDF</Text>
             </TouchableOpacity>
 
@@ -678,8 +826,8 @@ const ImageToPdf = ({ navigation }) => {
         <View style={styles.editModalOverlay}>
           {/* Header */}
           <View style={styles.editHeader}>
-            <TouchableOpacity onPress={closeEditModal}>
-              <Ionicons name="close" size={28} color="#fff" />
+            <TouchableOpacity onPress={closeEditModal} style={styles.editCloseBtn}>
+              <Ionicons name="close" size={28} color={colors.textPrimary} />
             </TouchableOpacity>
             <View style={styles.editHeaderButtons}>
               {hasChanges && (
@@ -688,7 +836,7 @@ const ImageToPdf = ({ navigation }) => {
                   style={styles.revertBtn}
                   activeOpacity={0.7}
                 >
-                  <Ionicons name="refresh" size={20} color="#fff" />
+                  <Ionicons name="refresh" size={20} color={colors.textPrimary} />
                   <Text style={styles.revertBtnText}>Revert</Text>
                 </TouchableOpacity>
               )}
@@ -705,6 +853,16 @@ const ImageToPdf = ({ navigation }) => {
               </TouchableOpacity>
             </View>
           </View>
+
+          {/* Toast for Edit Modal */}
+          {editModalToast && (
+            <View style={styles.editModalToastContainer}>
+              <View style={styles.editModalToastContent}>
+                <MaterialIcons name="info-outline" size={20} color={accent} />
+                <Text style={styles.editModalToastText}>{editModalToast}</Text>
+              </View>
+            </View>
+          )}
 
           {/* Image Preview Area */}
           <View style={styles.editImageContainer}>
@@ -743,20 +901,66 @@ const ImageToPdf = ({ navigation }) => {
                     </View>
                   )}
                 </View>
-
-                <Text style={styles.editImageCounter}>
-                  {editIndex + 1} / {images.length}
-                </Text>
               </View>
             )}
           </View>
 
           {/* Controls */}
-          <View style={styles.editControls}>
+          <View style={styles.editControlsWrapper}>
+            <View style={styles.editControls}>
+            {/* Current Image Counter */}
+            <View style={styles.editImageCountDisplay}>
+              <Text style={styles.editImageCountText}>
+                Image {editIndex !== null ? editIndex + 1 : 0} of {images.length}
+              </Text>
+            </View>
+
+            {/* Apply to All Toggle */}
+            <TouchableOpacity
+              style={styles.applyToAllToggle}
+              onPress={() => {
+                const newValue = !applyToAll;
+                setApplyToAll(newValue);
+
+                // Animate toggle
+                Animated.timing(applyToAllAnimation, {
+                  toValue: newValue ? 1 : 0,
+                  duration: 200,
+                  useNativeDriver: true,
+                }).start();
+
+                if (newValue) {
+                  setEditModalToast('Only rotational edits will be applied to all images');
+                  setTimeout(() => setEditModalToast(null), 3000);
+                }
+              }}
+              activeOpacity={0.7}
+            >
+              <View style={styles.applyToAllContent}>
+                <MaterialIcons name="layers" size={20} color={colors.textPrimary} />
+                <Text style={styles.applyToAllText}>Apply edits to all images</Text>
+              </View>
+              <View style={[styles.toggleSwitch, applyToAll && styles.toggleSwitchActive]}>
+                <Animated.View
+                  style={[
+                    styles.toggleThumb,
+                    {
+                      transform: [{
+                        translateX: applyToAllAnimation.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [0.5, 24.5]
+                        })
+                      }]
+                    }
+                  ]}
+                />
+              </View>
+            </TouchableOpacity>
+
             {/* Contrast Control */}
             <View style={styles.controlSection}>
               <View style={styles.controlHeader}>
-                <Ionicons name="contrast" size={20} color="#fff" />
+                <Ionicons name="contrast" size={20} color={colors.textPrimary} />
                 <Text style={styles.controlLabel}>Contrast</Text>
                 <Text style={styles.controlValue}>{Math.round(contrast * 100)}%</Text>
               </View>
@@ -768,7 +972,7 @@ const ImageToPdf = ({ navigation }) => {
                   value={contrast}
                   onValueChange={handleContrastChange}
                   minimumTrackTintColor={accent}
-                  maximumTrackTintColor="#444"
+                  maximumTrackTintColor={isDark ? '#444' : '#d0d0d0'}
                   thumbTintColor={accent}
                   {...Platform.select({
                     ios: {
@@ -787,7 +991,7 @@ const ImageToPdf = ({ navigation }) => {
                 onPress={rotateLeft}
                 activeOpacity={0.7}
               >
-                <MaterialCommunityIcons name="rotate-left" size={24} color="#fff" />
+                <MaterialCommunityIcons name="rotate-left" size={24} color={colors.textPrimary} />
                 <Text style={styles.actionBtnText}>Rotate Left</Text>
               </TouchableOpacity>
 
@@ -797,7 +1001,7 @@ const ImageToPdf = ({ navigation }) => {
                 onPress={() => setFiltersModalVisible(true)}
                 activeOpacity={0.7}
               >
-                <MaterialIcons name="filter" size={24} color="#fff" />
+                <MaterialIcons name="filter" size={24} color={colors.textPrimary} />
                 <Text style={styles.actionBtnText}>Filters</Text>
                 {activeFilter && (
                   <View style={styles.filterBadge}>
@@ -812,9 +1016,10 @@ const ImageToPdf = ({ navigation }) => {
                 onPress={rotateRight}
                 activeOpacity={0.7}
               >
-                <MaterialCommunityIcons name="rotate-right" size={24} color="#fff" />
+                <MaterialCommunityIcons name="rotate-right" size={24} color={colors.textPrimary} />
                 <Text style={styles.actionBtnText}>Rotate Right</Text>
               </TouchableOpacity>
+            </View>
             </View>
           </View>
         </View>
@@ -945,6 +1150,48 @@ const ImageToPdf = ({ navigation }) => {
         </Pressable>
       </Modal>
 
+      {/* Sort Position Modal */}
+      <Modal
+        visible={sortPositionModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setSortPositionModalVisible(false)}
+      >
+        <Pressable style={styles.pageSizeModalOverlay} onPress={() => setSortPositionModalVisible(false)}>
+          <BlurView blurType={colors.blurType} blurAmount={10} style={StyleSheet.absoluteFillObject} />
+          <Pressable style={styles.pageSizeModalContent} onPress={() => {}}>
+            <View style={styles.filtersModalHeader}>
+              <Text style={styles.filtersModalTitle}>Select Position</Text>
+              <TouchableOpacity onPress={() => setSortPositionModalVisible(false)}>
+                <Ionicons name="close" size={24} color={colors.textPrimary} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.pageSizeScrollView} showsVerticalScrollIndicator={false}>
+              {images.map((_, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={[
+                    styles.filterOption,
+                    selectedImageForSort === index && styles.filterOptionActive
+                  ]}
+                  onPress={() => moveImageToPosition(index)}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.filterOptionLeft}>
+                    <MaterialIcons name="filter" size={24} color={colors.textPrimary} />
+                    <Text style={styles.filterOptionText}>Position {index + 1}</Text>
+                  </View>
+                  {selectedImageForSort === index && (
+                    <Ionicons name="checkmark-circle" size={24} color={accent} />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
       {/* PDF Viewer Modal */}
       <Modal
         visible={pdfViewerVisible}
@@ -1047,6 +1294,24 @@ const createStyles = (colors, accent, isDark) => StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
+  sortingBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: isDark ? '#2a2a2a' : '#e8e8e8',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    gap: 6,
+  },
+  sortingBadgeText: {
+    color: colors.textPrimary,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  headerButtonsContainer: {
+    flexDirection: 'row',
+    gap: 8,
+  },
   clearAllBtn: {
     backgroundColor: '#FF4444',
     paddingHorizontal: 14,
@@ -1058,10 +1323,53 @@ const createStyles = (colors, accent, isDark) => StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
   },
+  sortBtn: {
+    backgroundColor: isDark ? '#2a2a2a' : '#e8e8e8',
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  sortBtnText: {
+    color: colors.textPrimary,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  doneBtn: {
+    backgroundColor: accent,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  doneBtnText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  buttonDisabled: {
+    opacity: 0.4,
+  },
+  sortingInstructions: {
+    flexDirection: 'row',
+    backgroundColor: isDark ? '#2a2a2a' : '#f0f0f0',
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 16,
+    gap: 12,
+    alignItems: 'flex-start',
+  },
+  sortingInstructionsText: {
+    flex: 1,
+    color: colors.textPrimary,
+    fontSize: 14,
+    lineHeight: 20,
+  },
   horizontalScroll: {
     gap: 14,
     paddingVertical: 14,
     paddingRight: 20,
+  },
+  imageItemContainer: {
+    marginRight: 14,
   },
   thumbWrapper: {
     width: THUMB_SIZE,
@@ -1136,6 +1444,23 @@ const createStyles = (colors, accent, isDark) => StyleSheet.create({
     height: 32,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  moveButtonsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 8,
+  },
+  moveBtn: {
+    backgroundColor: isDark ? '#2a2a2a' : '#e8e8e8',
+    borderRadius: 20,
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  moveBtnDisabled: {
+    opacity: 0.3,
   },
 
   // Pick Button
@@ -1216,11 +1541,11 @@ const createStyles = (colors, accent, isDark) => StyleSheet.create({
     fontWeight: '600',
   },
   toggleSwitch: {
-    width: 48,
-    height: 28,
-    borderRadius: 14,
+    width: 56,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: colors.textMuted || '#666',
-    padding: 2,
+    padding: 4,
     justifyContent: 'center',
   },
   toggleSwitchActive: {
@@ -1231,7 +1556,6 @@ const createStyles = (colors, accent, isDark) => StyleSheet.create({
     height: 24,
     borderRadius: 12,
     backgroundColor: '#fff',
-    alignSelf: 'flex-start',
   },
   toggleThumbActive: {
     alignSelf: 'flex-end',
@@ -1379,7 +1703,7 @@ const createStyles = (colors, accent, isDark) => StyleSheet.create({
   // Edit Modal
   editModalOverlay: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: colors.bg,
   },
   editHeader: {
     flexDirection: 'row',
@@ -1388,9 +1712,50 @@ const createStyles = (colors, accent, isDark) => StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight + 16 : 60,
     paddingBottom: 16,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 9999,
+    backgroundColor: colors.bg,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border2 || (isDark ? '#2a2a2a' : '#e0e0e0'),
+  },
+  editCloseBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: isDark ? '#2a2a2a' : '#e8e8e8',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  editModalToastContainer: {
+    position: 'absolute',
+    top: Platform.OS === 'android' ? StatusBar.currentHeight + 80 : 124,
+    left: 20,
+    right: 20,
+    zIndex: 10000,
+    alignItems: 'center',
+  },
+  editModalToastContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: isDark ? '#2a2a2a' : '#f0f0f0',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 10,
+    borderWidth: 1,
+    borderColor: isDark ? '#404040' : '#d0d0d0',
+  },
+  editModalToastText: {
+    color: colors.textPrimary,
+    fontSize: 14,
+    fontWeight: '600',
+    flex: 1,
   },
   editHeaderText: {
-    color: '#fff',
+    color: colors.textPrimary,
     fontSize: 18,
     fontWeight: '700',
   },
@@ -1399,7 +1764,7 @@ const createStyles = (colors, accent, isDark) => StyleSheet.create({
     gap: 10,
   },
   revertBtn: {
-    backgroundColor: '#555',
+    backgroundColor: isDark ? '#3a3a3a' : '#d0d0d0',
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 20,
@@ -1408,7 +1773,7 @@ const createStyles = (colors, accent, isDark) => StyleSheet.create({
     gap: 4,
   },
   revertBtnText: {
-    color: '#fff',
+    color: colors.textPrimary,
     fontSize: 14,
     fontWeight: '600',
   },
@@ -1430,6 +1795,7 @@ const createStyles = (colors, accent, isDark) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
+    backgroundColor: isDark ? colors.bg : '#e5e5e5',
   },
   editImageWrapper: {
     alignItems: 'center',
@@ -1451,13 +1817,46 @@ const createStyles = (colors, accent, isDark) => StyleSheet.create({
     fontWeight: '600',
     marginTop: 20,
   },
-  editControls: {
-    backgroundColor: '#1a1a1a',
+  editControlsWrapper: {
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
+    overflow: 'hidden',
+    backgroundColor: isDark ? '#1a1a1a' : '#e5e5e5',
+  },
+  editControls: {
+    backgroundColor: isDark ? '#1a1a1a' : '#ffffff',
     paddingHorizontal: 20,
     paddingTop: 24,
     paddingBottom: 40,
+  },
+  editImageCountDisplay: {
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  editImageCountText: {
+    color: colors.textTertiary,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  applyToAllToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: isDark ? '#2a2a2a' : '#e8e8e8',
+    borderRadius: 60,
+    paddingHorizontal: 18,
+    paddingVertical: 16,
+    marginBottom: 24,
+  },
+  applyToAllContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  applyToAllText: {
+    color: colors.textPrimary,
+    fontSize: 15,
+    fontWeight: '600',
   },
   controlSection: {
     marginBottom: 24,
@@ -1469,13 +1868,13 @@ const createStyles = (colors, accent, isDark) => StyleSheet.create({
     gap: 8,
   },
   controlLabel: {
-    color: '#fff',
+    color: colors.textPrimary,
     fontSize: 16,
     fontWeight: '600',
     flex: 1,
   },
   controlValue: {
-    color: '#aaa',
+    color: colors.textTertiary,
     fontSize: 14,
     fontWeight: '600',
   },
@@ -1495,15 +1894,17 @@ const createStyles = (colors, accent, isDark) => StyleSheet.create({
   },
   actionBtn: {
     flex: 1,
-    backgroundColor: '#2a2a2a',
+    backgroundColor: isDark ? '#2a2a2a' : '#fff',
     borderRadius: 66,
     paddingVertical: 16,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
+    borderWidth: isDark ? 0 : 1,
+    borderColor: '#e0e0e0',
   },
   actionBtnText: {
-    color: '#fff',
+    color: colors.textPrimary,
     fontSize: 13,
     fontWeight: '600',
   },

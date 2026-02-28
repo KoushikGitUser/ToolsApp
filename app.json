@@ -21,7 +21,11 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.koushikdev.toolsapp"
+      "package": "com.koushikdev.toolsapp",
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -36,8 +40,9 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "e5b80d81-86c3-4aaf-b650-db96d7650b21"
+        "projectId": "ed77b9b6-5837-4536-b954-44638594e1af"
       }
-    }
+    },
+    "owner": "smgdev"
   }
 }

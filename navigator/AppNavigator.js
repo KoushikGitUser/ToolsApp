@@ -8,6 +8,7 @@ import ImageCompressor from '../Screens/ImageCompressor';
 import ImageFormatConverter from '../Screens/ImageFormatConverter';
 import VideoCompressor from '../Screens/VideoCompressor';
 import AudioCompressor from '../Screens/AudioCompressor';
+import CameraToText from '../Screens/CameraToText';
 
 const Stack = createNativeStackNavigator();
 
@@ -28,6 +29,7 @@ const AppNavigator = () => {
       <Stack.Screen name="VideoCompressor" component={VideoCompressor} />
       <Stack.Screen name="AudioCompressor" component={AudioCompressor} />
       <Stack.Screen name="ImageFormatConverter" component={ImageFormatConverter} />
+      <Stack.Screen name="CameraToText" component={CameraToText} />
     </Stack.Navigator>
   );
 };

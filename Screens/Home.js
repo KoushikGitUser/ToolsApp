@@ -4,13 +4,13 @@ import {
   ScrollView,
   StyleSheet,
   StatusBar,
-  TouchableOpacity, 
+  TouchableOpacity,
   Platform,
   Modal,
-  Pressable,
+  Animated,
 } from 'react-native';
-import { useState, useMemo } from 'react';
-import { MaterialIcons, MaterialCommunityIcons, AntDesign, FontAwesome5, Ionicons } from '@expo/vector-icons';
+import { useState, useMemo, useRef } from 'react';
+import { MaterialIcons, MaterialCommunityIcons, AntDesign, FontAwesome5, Ionicons, Entypo, Feather } from '@expo/vector-icons';
 import { BlurView } from '@react-native-community/blur';
 import { Repeat } from 'lucide-react-native';
 import { useTheme } from '../Services/ThemeContext';
@@ -56,6 +56,19 @@ const CARDS = [
     screen: 'ImageFormatConverter',
   },
   {
+    title: 'Camera to Text',
+    wideIcon: true,
+    iconComponent: (color) => (
+      <>
+        <Entypo name="camera" size={24} color={color} />
+        <Repeat size={19} color={color} strokeWidth={2.5} />
+        <Feather name="file-text" size={24} color={color} />
+      </>
+    ),
+    accent: '#FF6F00',
+    screen: 'CameraToText',
+  },
+  {
     title: 'Video Compressor',
     wideIcon: true,
     iconComponent: (color) => (
@@ -98,12 +111,6 @@ const CARDS = [
 
 const FEATURES = [
   {
-    icon: <MaterialIcons name="deblur" size={20} color="#009688" />,
-    accent: '#009688',
-    title: 'Full Blur',
-    desc: 'Apply smooth blur effects to any image with adjustable intensity levels and save at original resolution.',
-  },
-  {
     icon: <FontAwesome5 name="file-pdf" size={18} color="#D50000" />,
     accent: '#D50000',
     title: 'Image to PDF',
@@ -114,6 +121,18 @@ const FEATURES = [
     accent: '#ffa200',
     title: 'Image Compressor',
     desc: 'Reduce image file size while maintaining quality with customisable compression settings.',
+  },
+  {
+    icon: <MaterialCommunityIcons name="file-jpg-box" size={20} color="#2E86DE" />,
+    accent: '#2E86DE',
+    title: 'Format Changer',
+    desc: 'Convert images between JPG, PNG, and WEBP formats with a single tap.',
+  },
+  {
+    icon: <Entypo name="camera" size={20} color="#FF6F00" />,
+    accent: '#FF6F00',
+    title: 'Camera to Text',
+    desc: 'Capture images with your camera and extract text using OCR technology instantly.',
   },
   {
     icon: <Ionicons name="videocam" size={20} color="#3f51c3" />,
@@ -128,17 +147,20 @@ const FEATURES = [
     desc: 'Compress audio files with selectable bitrate presets to reduce file size efficiently.',
   },
   {
-    icon: <MaterialCommunityIcons name="file-jpg-box" size={20} color="#2E86DE" />,
-    accent: '#2E86DE',
-    title: 'Format Changer',
-    desc: 'Convert images between JPG, PNG, and WEBP formats with a single tap.',
+    icon: <MaterialIcons name="deblur" size={20} color="#009688" />,
+    accent: '#009688',
+    title: 'Full Blur',
+    desc: 'Apply smooth blur effects to any image with adjustable intensity levels and save at original resolution.',
   },
 ];
 
 const Home = ({ navigation }) => {
   const [infoVisible, setInfoVisible] = useState(false);
   const { colors, isDark, toggleTheme } = useTheme();
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
+
+  // Animation for theme toggle
+  const themeToggleAnimation = useRef(new Animated.Value(isDark ? 1 : 0)).current;
 
   return (
     <View style={styles.container}>
@@ -147,12 +169,41 @@ const Home = ({ navigation }) => {
       <View style={styles.header}>
         <Text style={styles.heading}>Tools</Text>
         <View style={styles.headerRight}>
-          <TouchableOpacity onPress={toggleTheme} style={styles.themeBtn} activeOpacity={0.7}>
-            <Ionicons
-              name={isDark ? 'sunny-outline' : 'moon-outline'}
-              size={24}
-              color={colors.sectionSubtitle}
-            />
+          <TouchableOpacity
+            onPress={() => {
+              toggleTheme();
+              // Animate toggle
+              Animated.timing(themeToggleAnimation, {
+                toValue: !isDark ? 1 : 0,
+                duration: 200,
+                useNativeDriver: true,
+              }).start();
+            }}
+            style={styles.themeToggle}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.toggleSwitch, isDark && styles.toggleSwitchActive]}>
+              <Animated.View
+                style={[
+                  styles.toggleThumb,
+                  {
+                    transform: [{
+                      translateX: themeToggleAnimation.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [0.5, 24.5]
+                      })
+                    }]
+                  }
+                ]}
+              >
+                {isDark?<AntDesign name="moon" size={22} color="#FFD700" />:<Ionicons
+                  name='sunny'
+                  size={18}
+                  color={isDark ? '#FFD700' : '#FFA500'}
+                />}
+                
+              </Animated.View>
+            </View>
           </TouchableOpacity>
           <TouchableOpacity onPress={() => setInfoVisible(true)} style={styles.infoBtn} activeOpacity={0.7}>
             <Ionicons name="information-circle-outline" size={28} color={colors.sectionSubtitle} />
@@ -183,9 +234,9 @@ const Home = ({ navigation }) => {
         animationType="slide"
         onRequestClose={() => setInfoVisible(false)}
       >
-        <Pressable style={styles.modalOverlay} onPress={() => setInfoVisible(false)}>
+        <View style={styles.modalOverlay}>
           <BlurView blurType={colors.blurType} blurAmount={10} style={StyleSheet.absoluteFillObject} />
-          <Pressable style={styles.modalBox} onPress={() => {}}>
+          <View style={styles.modalBox}>
 
             {/* Modal Header */}
             <View style={styles.modalHeader}>
@@ -219,15 +270,15 @@ const Home = ({ navigation }) => {
               <Text style={styles.creditName}>Koushik Chakraborty</Text>
             </View>
 
-          </Pressable>
-        </Pressable>
+          </View>
+        </View>
       </Modal>
 
     </View>
   );
 };
 
-const createStyles = (colors) => StyleSheet.create({
+const createStyles = (colors, isDark) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.bg,
@@ -250,10 +301,29 @@ const createStyles = (colors) => StyleSheet.create({
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 12,
   },
-  themeBtn: {
+  themeToggle: {
     padding: 4,
+  },
+  toggleSwitch: {
+    width: 56,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: isDark ? '#444' : '#e0e0e0',
+    padding: 4,
+    justifyContent: 'center',
+  },
+  toggleSwitchActive: {
+    backgroundColor: '#282838',
+  },
+  toggleThumb: {
+    width: 25,
+    height: 25,
+    borderRadius: 12,
+    backgroundColor: isDark?"#000000": '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   infoBtn: {
     padding: 4,
