@@ -4,7 +4,7 @@ import {
   ScrollView,
   StyleSheet,
   StatusBar,
-  TouchableOpacity,
+  TouchableOpacity, 
   Platform,
   Modal,
   Pressable,
@@ -16,19 +16,6 @@ import { Repeat } from 'lucide-react-native';
 import { useTheme } from '../Services/ThemeContext';
 
 const CARDS = [
-  {
-    title: 'Full Blur',
-    wideIcon: true,
-    iconComponent: (color) => (
-      <>
-        <Ionicons name="image" size={24} color={color} />
-        <Repeat size={19} color={color} strokeWidth={2.5} />
-        <MaterialIcons name="deblur" size={24} color={color} />
-      </>
-    ),
-    accent: '#009688',
-    screen: 'FullBlur',
-  },
   {
     title: 'Image to PDF',
     wideIcon: true,
@@ -54,6 +41,19 @@ const CARDS = [
     ),
     accent: '#ffa200',
     screen: 'ImageCompressor',
+  },
+  {
+    title: 'Format Changer',
+    wideIcon: true,
+    iconComponent: (color) => (
+      <>
+        <MaterialCommunityIcons name="file-jpg-box" size={24} color={color} />
+        <Repeat size={19} color={color} strokeWidth={2.5} />
+        <MaterialCommunityIcons name="file-png-box" size={24} color={color} />
+      </>
+    ),
+    accent: '#2E86DE',
+    screen: 'ImageFormatConverter',
   },
   {
     title: 'Video Compressor',
@@ -82,17 +82,17 @@ const CARDS = [
     screen: 'AudioCompressor',
   },
   {
-    title: 'Format Changer',
+    title: 'Full Blur',
     wideIcon: true,
     iconComponent: (color) => (
       <>
-        <MaterialCommunityIcons name="file-jpg-box" size={24} color={color} />
+        <Ionicons name="image" size={24} color={color} />
         <Repeat size={19} color={color} strokeWidth={2.5} />
-        <MaterialCommunityIcons name="file-png-box" size={24} color={color} />
+        <MaterialIcons name="deblur" size={24} color={color} />
       </>
     ),
-    accent: '#2E86DE',
-    screen: 'ImageFormatConverter',
+    accent: '#009688',
+    screen: 'FullBlur',
   },
 ];
 
