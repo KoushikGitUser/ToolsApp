@@ -292,7 +292,7 @@ const VideoCompressor = ({ navigation }) => {
 
           {/* Pick Video Button */}
           <TouchableOpacity style={styles.pickBtn} onPress={pickVideo} activeOpacity={0.8}>
-            <Ionicons name="videocam-outline" size={22} color={colors.textPrimary} />
+            <Ionicons name="videocam" size={22} color={colors.textPrimary} />
             <Text style={styles.pickBtnText}>
               {!video ? 'Pick Video' : 'Change Video'}
             </Text>

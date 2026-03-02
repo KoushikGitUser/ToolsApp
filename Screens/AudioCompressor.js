@@ -327,7 +327,7 @@ const AudioCompressor = ({ navigation }) => {
 
           {/* Pick Audio Button */}
           <TouchableOpacity style={styles.pickBtn} onPress={pickAudio} activeOpacity={0.8}>
-            <Ionicons name="document-outline" size={22} color={colors.textPrimary} />
+            <Ionicons name="musical-notes" size={22} color={colors.textPrimary} />
             <Text style={styles.pickBtnText}>
               {!audio ? 'Pick Audio' : 'Change Audio'}
             </Text>

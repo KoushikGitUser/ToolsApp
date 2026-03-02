@@ -281,7 +281,7 @@ const ImageCompressor = ({ navigation }) => {
 
         {/* Pick Image Button */}
         <TouchableOpacity style={styles.pickBtn} onPress={pickImage} activeOpacity={0.8}>
-          <MaterialIcons name="add-photo-alternate" size={22} color={colors.textPrimary} />
+           <Ionicons name="image" size={24} color={colors.textPrimary} />
           <Text style={styles.pickBtnText}>
             {!image ? 'Pick Image' : 'Change Image'}
           </Text>

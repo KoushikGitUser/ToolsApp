@@ -8,13 +8,7 @@ import {
 } from "react-native";
 import { useEffect, useRef, useState } from "react";
 import { toastEmitter } from "../../Services/toast";
-import {
-  BadgeCheck,
-  CircleCheck,
-  CircleX,
-  Info,
-  TriangleAlert,
-} from "lucide-react-native";
+import { MaterialIcons, Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../Services/ThemeContext";
 
 const TYPE_COLORS = {
@@ -111,11 +105,19 @@ const Toaster = () => {
 
   const typeColor = TYPE_COLORS[toast.type] || TYPE_COLORS.normal;
 
-  const IconComponent = toast.type === "success" ? BadgeCheck
-    : toast.type === "alert" ? TriangleAlert
-    : toast.type === "info" ? Info
-    : toast.type === "normal" ? CircleCheck
-    : CircleX;
+  const renderIcon = () => {
+    if (toast.type === "success") {
+      return <MaterialIcons name="check-circle" size={22} color={typeColor} style={{ marginTop: 3 }} />;
+    } else if (toast.type === "alert") {
+      return <Ionicons name="warning" size={22} color={typeColor} style={{ marginTop: 3 }} />;
+    } else if (toast.type === "info") {
+      return <Ionicons name="information-circle" size={22} color={typeColor} style={{ marginTop: 3 }} />;
+    } else if (toast.type === "normal") {
+      return <Ionicons name="checkmark-circle" size={22} color={typeColor} style={{ marginTop: 3 }} />;
+    } else {
+      return <Ionicons name="close-circle" size={22} color={typeColor} style={{ marginTop: 3 }} />;
+    }
+  };
 
   return (
     <Animated.View
@@ -130,7 +132,7 @@ const Toaster = () => {
       ]}
     >
       <View style={[styles.indicator, { backgroundColor: typeColor }]} />
-      <IconComponent style={{ marginTop: 3 }} color={typeColor} strokeWidth={1.25} size={22} />
+      {renderIcon()}
       <Animated.View style={styles.textContainer}>
         <Text style={[styles.textTitle, { color: colors.textPrimary }]}>{toast.title}</Text>
         {toast.description !== "" && (

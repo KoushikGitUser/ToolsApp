@@ -10,7 +10,7 @@ import {
   ScrollView,
   ActivityIndicator,
 } from 'react-native';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
 import { triggerToast } from '../Services/toast';
 import * as ImagePicker from 'expo-image-picker';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
@@ -243,7 +243,7 @@ const ImageFormatConverter = ({ navigation }) => {
 
         {/* Pick Image Button */}
         <TouchableOpacity style={styles.pickBtn} onPress={pickImage} activeOpacity={0.8}>
-          <Ionicons name="image-outline" size={22} color={colors.textPrimary} />
+           <Ionicons name="image" size={24} color={colors.textPrimary} />
           <Text style={styles.pickBtnText}>
             {!image ? 'Pick Image' : 'Change Image'}
           </Text>

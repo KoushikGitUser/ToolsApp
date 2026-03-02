@@ -12,7 +12,6 @@ import {
 import { useState, useMemo, useRef } from 'react';
 import { MaterialIcons, MaterialCommunityIcons, AntDesign, FontAwesome5, Ionicons, Entypo, Feather } from '@expo/vector-icons';
 import { BlurView } from '@react-native-community/blur';
-import { Repeat } from 'lucide-react-native';
 import { useTheme } from '../Services/ThemeContext';
 
 const CARDS = [
@@ -22,7 +21,7 @@ const CARDS = [
     iconComponent: (color) => (
       <>
         <Ionicons name="image" size={24} color={color} />
-        <Repeat size={19} color={color} strokeWidth={2.5} />
+        <Feather name="repeat" size={19} color={color} />
         <FontAwesome5 name="file-pdf" size={24} color={color} />
       </>
     ),
@@ -35,7 +34,7 @@ const CARDS = [
     iconComponent: (color) => (
       <>
         <Ionicons name="image" size={24} color={color} />
-        <Repeat size={19} color={color} strokeWidth={2.5} />
+        <Feather name="repeat" size={19} color={color} />
         <AntDesign name="compress" size={24} color={color} />
       </>
     ),
@@ -48,7 +47,7 @@ const CARDS = [
     iconComponent: (color) => (
       <>
         <MaterialCommunityIcons name="file-jpg-box" size={24} color={color} />
-        <Repeat size={19} color={color} strokeWidth={2.5} />
+        <Feather name="repeat" size={19} color={color} />
         <MaterialCommunityIcons name="file-png-box" size={24} color={color} />
       </>
     ),
@@ -61,7 +60,7 @@ const CARDS = [
     iconComponent: (color) => (
       <>
         <Entypo name="camera" size={24} color={color} />
-        <Repeat size={19} color={color} strokeWidth={2.5} />
+        <Feather name="repeat" size={19} color={color} />
         <Feather name="file-text" size={24} color={color} />
       </>
     ),
@@ -69,12 +68,25 @@ const CARDS = [
     screen: 'CameraToText',
   },
   {
+    title: 'QR Code Tools',
+    wideIcon: true,
+    iconComponent: (color) => (
+      <>
+        <Ionicons name="qr-code" size={24} color={color} />
+        <Feather name="repeat" size={19} color={color} />
+        <Entypo name="tools" size={24} color={color} />
+      </>
+    ),
+    accent: '#6B8E23',
+    screen: 'QRCodeTools',
+  },
+  {
     title: 'Video Compressor',
     wideIcon: true,
     iconComponent: (color) => (
       <>
         <Ionicons name="videocam" size={24} color={color} />
-        <Repeat size={19} color={color} strokeWidth={2.5} />
+        <Feather name="repeat" size={19} color={color} />
         <AntDesign name="compress" size={24} color={color} />
       </>
     ),
@@ -87,7 +99,7 @@ const CARDS = [
     iconComponent: (color) => (
       <>
         <Ionicons name="musical-notes" size={24} color={color} />
-        <Repeat size={19} color={color} strokeWidth={2.5} />
+        <Feather name="repeat" size={19} color={color} />
         <AntDesign name="compress" size={24} color={color} />
       </>
     ),
@@ -100,7 +112,7 @@ const CARDS = [
     iconComponent: (color) => (
       <>
         <Ionicons name="image" size={24} color={color} />
-        <Repeat size={19} color={color} strokeWidth={2.5} />
+        <Feather name="repeat" size={19} color={color} />
         <MaterialIcons name="deblur" size={24} color={color} />
       </>
     ),
@@ -133,6 +145,12 @@ const FEATURES = [
     accent: '#FF6F00',
     title: 'Camera to Text',
     desc: 'Capture images with your camera and extract text using OCR technology instantly.',
+  },
+  {
+    icon: <Ionicons name="qr-code" size={20} color="#6B8E23" />,
+    accent: '#6B8E23',
+    title: 'QR Code Tools',
+    desc: 'Generate QR codes from text or URLs and scan QR codes with your camera.',
   },
   {
     icon: <Ionicons name="videocam" size={20} color="#3f51c3" />,
@@ -196,10 +214,10 @@ const Home = ({ navigation }) => {
                   }
                 ]}
               >
-                {isDark?<AntDesign name="moon" size={22} color="#FFD700" />:<Ionicons
+                {isDark ? <AntDesign name="moon" size={22} color="#FFD700" /> : <Ionicons
                   name='sunny'
                   size={18}
-                  color={isDark ? '#FFD700' : '#FFA500'}
+                  color='#FFA500'
                 />}
                 
               </Animated.View>
@@ -249,6 +267,17 @@ const Home = ({ navigation }) => {
             <Text style={styles.modalSubtitle}>
               A powerful all-in-one toolkit for media processing — right on your device.
             </Text>
+
+            {/* Security Section */}
+            <View style={styles.securityCard}>
+              <View style={styles.securityHeader}>
+                <Ionicons name="shield-checkmark" size={24} color="#4CAF50" />
+                <Text style={styles.securityTitle}>Security First</Text>
+              </View>
+              <Text style={styles.securityDesc}>
+                This is a completely offline application. All your images, documents, and data are processed locally on your device. Nothing is uploaded to any server or shared with third parties. Your privacy and security are our top priority.
+              </Text>
+            </View>
 
             <ScrollView showsVerticalScrollIndicator={false} style={styles.featureScroll}>
               {FEATURES.map((f, i) => (
@@ -393,6 +422,29 @@ const createStyles = (colors, isDark) => StyleSheet.create({
     color: colors.textTertiary,
     marginBottom: 20,
     lineHeight: 18,
+  },
+
+  securityCard: {
+    backgroundColor: isDark ? '#1B5E20' : '#C8E6C9',
+    borderRadius: 15,
+    padding: 16,
+    marginBottom: 20,
+  },
+  securityHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 10,
+  },
+  securityTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: isDark ? '#FFFFFF' : '#1B5E20',
+  },
+  securityDesc: {
+    fontSize: 13,
+    color: isDark ? '#E8F5E9' : '#2E7D32',
+    lineHeight: 20,
   },
 
   featureScroll: {

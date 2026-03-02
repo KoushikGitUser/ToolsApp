@@ -196,6 +196,9 @@ const ImageToPdf = ({ navigation }) => {
     setHasChanges(false);
     setApplyToAll(false);
 
+    // Reset apply to all toggle animation
+    applyToAllAnimation.setValue(0);
+
     // Store original image URI for reverting
     const imageUri = images[index]?.uri;
     setOriginalImageUri(imageUri);
@@ -257,6 +260,8 @@ const ImageToPdf = ({ navigation }) => {
       setActiveFilter(null);
       setHasChanges(false);
       setApplyToAll(false);
+      // Reset apply to all toggle animation
+      applyToAllAnimation.setValue(0);
       return;
     }
 
@@ -348,6 +353,9 @@ const ImageToPdf = ({ navigation }) => {
       setActiveFilter(null);
       setHasChanges(false);
       setApplyToAll(false);
+
+      // Reset apply to all toggle animation
+      applyToAllAnimation.setValue(0);
     } catch (error) {
       console.log('Edit error:', error);
       triggerToast('Error', 'Failed to save image. Please try again.', 'error', 3000);
@@ -659,7 +667,8 @@ const ImageToPdf = ({ navigation }) => {
             activeOpacity={0.8}
             disabled={images.length >= 15}
           >
-            <MaterialIcons name="add-photo-alternate" size={22} color={colors.textPrimary} />
+
+            <Ionicons name="images" size={24} color={colors.textPrimary} />
             <Text style={styles.pickBtnText}>
               {images.length === 0 ? 'Pick Images' : images.length >= 15 ? 'Max Images Reached' : 'Add More Images'}
             </Text>
@@ -938,7 +947,7 @@ const ImageToPdf = ({ navigation }) => {
             >
               <View style={styles.applyToAllContent}>
                 <MaterialIcons name="layers" size={20} color={colors.textPrimary} />
-                <Text style={styles.applyToAllText}>Apply edits to all images</Text>
+                <Text style={styles.applyToAllText}>Apply rotation to all images</Text>
               </View>
               <View style={[styles.toggleSwitch, applyToAll && styles.toggleSwitchActive]}>
                 <Animated.View
@@ -1202,11 +1211,14 @@ const ImageToPdf = ({ navigation }) => {
         <View style={styles.pdfViewerContainer}>
           <View style={styles.pdfViewerHeader}>
             <Text style={styles.pdfViewerTitle}>PDF Preview</Text>
-            <TouchableOpacity onPress={() => setPdfViewerVisible(false)}>
+            <TouchableOpacity
+              onPress={() => setPdfViewerVisible(false)}
+              activeOpacity={0.7}
+            >
               <Ionicons name="close" size={28} color={colors.textPrimary} />
             </TouchableOpacity>
           </View>
-          {pdfUri && (
+          {pdfViewerVisible && pdfUri ? (
             <Pdf
               source={{ uri: pdfUri }}
               style={styles.pdfView}
@@ -1225,7 +1237,7 @@ const ImageToPdf = ({ navigation }) => {
                 </View>
               )}
             />
-          )}
+          ) : null}
         </View>
       </Modal>
     </View>

@@ -13,12 +13,15 @@ import {
   Modal,
 } from 'react-native';
 import { Ionicons, Entypo, MaterialCommunityIcons } from '@expo/vector-icons';
+import { BlurView } from '@react-native-community/blur';
 import { useTheme } from '../Services/ThemeContext';
 import * as ImagePicker from 'expo-image-picker';
 import * as Clipboard from 'expo-clipboard';
+import * as Speech from 'expo-speech';
 import MlkitOcr from 'react-native-mlkit-ocr';
 import { Camera, useCameraDevice, useCameraPermission } from 'react-native-vision-camera';
 import { triggerToast } from '../Services/toast';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const ACCENT = '#FF6F00';
 const ACCENT_LIGHT = '#FF8F00';
@@ -31,6 +34,10 @@ const CameraToText = ({ navigation }) => {
   const [isScanning, setIsScanning] = useState(false);
   const [showImageModal, setShowImageModal] = useState(false);
   const [showTextModal, setShowTextModal] = useState(false);
+  const [showWarningModal, setShowWarningModal] = useState(false);
+  const [dontShowWarning, setDontShowWarning] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [currentWordIndex, setCurrentWordIndex] = useState(-1);
 
   const { colors, isDark } = useTheme();
   const accent = isDark ? ACCENT : ACCENT_LIGHT;
@@ -43,15 +50,32 @@ const CameraToText = ({ navigation }) => {
   const scanIntervalRef = useRef(null);
   const isScanningRef = useRef(false);
 
+  // Load warning preference on mount
+  useEffect(() => {
+    const loadWarningPreference = async () => {
+      try {
+        const value = await AsyncStorage.getItem('liveCameraWarningDismissed');
+        if (value === 'true') {
+          setDontShowWarning(true);
+        }
+      } catch (error) {
+        console.error('Error loading warning preference:', error);
+      }
+    };
+    loadWarningPreference();
+  }, []);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
       scanIntervalRef.current = null;
       isScanningRef.current = false;
+      // Stop speech on unmount
+      Speech.stop();
     };
   }, []);
 
-  const performOCR = async (imageUri) => {
+  const performOCR = async (imageUri, isLiveScanning = false) => {
     try {
       setLoading(true);
       console.log('Performing OCR on:', imageUri);
@@ -69,7 +93,10 @@ const CameraToText = ({ navigation }) => {
         console.log('No text detected');
         setExtractedText('');
         setSelectedImage(imageUri);
-        triggerToast('No Text', 'No text detected in the image', 'alert', 2000);
+        // Only show toast if not live scanning
+        if (!isLiveScanning) {
+          triggerToast('No Text', 'No text detected in the image', 'alert', 2000);
+        }
         return false;
       }
     } catch (error) {
@@ -109,7 +136,7 @@ const CameraToText = ({ navigation }) => {
         imageUri = `file://${imageUri}`;
       }
       console.log('Processing URI:', imageUri);
-      const textFound = await performOCR(imageUri);
+      const textFound = await performOCR(imageUri, true);
 
       if (textFound) {
         // Text detected - stop scanning
@@ -130,7 +157,7 @@ const CameraToText = ({ navigation }) => {
     }
   };
 
-  const openLiveCamera = async () => {
+  const startLiveCamera = async () => {
     if (!hasPermission) {
       const permission = await requestPermission();
       if (!permission) {
@@ -158,6 +185,23 @@ const CameraToText = ({ navigation }) => {
         startAutoScan();
       }, 1500);
     }, 1000); // Give camera 1 second to initialize
+  };
+
+  const openLiveCamera = () => {
+    if (dontShowWarning) {
+      startLiveCamera();
+    } else {
+      setShowWarningModal(true);
+    }
+  };
+
+  const handleDontShowAgain = async (checked) => {
+    setDontShowWarning(checked);
+    try {
+      await AsyncStorage.setItem('liveCameraWarningDismissed', checked ? 'true' : 'false');
+    } catch (error) {
+      console.error('Error saving warning preference:', error);
+    }
   };
 
   const stopCamera = () => {
@@ -229,10 +273,60 @@ const CameraToText = ({ navigation }) => {
     }
   };
 
+  const speakFromWord = async (wordIndex) => {
+    if (!extractedText) return;
+
+    const words = extractedText.split(/\s+/);
+    const textToSpeak = words.slice(wordIndex).join(' ');
+
+    // Stop any existing speech
+    await Speech.stop();
+
+    // Small delay to ensure stop completes
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    // Set state after stop completes
+    setIsSpeaking(true);
+    setCurrentWordIndex(wordIndex);
+
+    Speech.speak(textToSpeak, {
+      onDone: () => {
+        setIsSpeaking(false);
+        setCurrentWordIndex(-1);
+      },
+      onStopped: () => {
+        setIsSpeaking(false);
+        setCurrentWordIndex(-1);
+      },
+      onError: () => {
+        setIsSpeaking(false);
+        setCurrentWordIndex(-1);
+        triggerToast('Error', 'Failed to speak text', 'alert', 2000);
+      },
+    });
+  };
+
+  const speakText = () => {
+    if (isSpeaking) {
+      stopSpeaking();
+    } else {
+      speakFromWord(0);
+    }
+  };
+
+  const stopSpeaking = () => {
+    Speech.stop();
+    setIsSpeaking(false);
+    setCurrentWordIndex(-1);
+  };
+
   const clearAll = () => {
     setExtractedText('');
     setSelectedImage(null);
     stopCamera();
+    if (isSpeaking) {
+      stopSpeaking();
+    }
   };
 
   if (isCameraActive && device) {
@@ -336,14 +430,26 @@ const CameraToText = ({ navigation }) => {
                 nestedScrollEnabled={true}
               >
                 {extractedText ? (
-                  <Text style={styles.extractedText} selectable>{extractedText}</Text>
+                  <View style={styles.wordsContainer}>
+                    {extractedText.split(/\s+/).map((word, index) => (
+                      <TouchableOpacity
+                        key={index}
+                        onPress={() => speakFromWord(index)}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={styles.extractedText}>
+                          {word}{' '}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
                 ) : (
                   <Text style={styles.noTextDetected}>No text detected</Text>
                 )}
               </ScrollView>
             </View>
 
-            {/* Copy and Share Buttons (only if text exists) */}
+            {/* Action Buttons (only if text exists) */}
             {extractedText && (
               <View style={styles.actionButtonsContainer}>
                 <TouchableOpacity
@@ -353,6 +459,18 @@ const CameraToText = ({ navigation }) => {
                 >
                   <Ionicons name="copy" size={20} color={isDark ? '#FF6F00' : '#fff'} />
                   <Text style={styles.copyButtonText}>Copy</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={speakText}
+                  style={styles.speakButton}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons
+                    name={isSpeaking ? "stop-circle" : "volume-high"}
+                    size={20}
+                    color={isDark ? '#4CAF50' : '#fff'}
+                  />
+                  <Text style={styles.speakButtonText}>{isSpeaking ? 'Stop' : 'Speak'}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={shareText}
@@ -375,7 +493,7 @@ const CameraToText = ({ navigation }) => {
           </View>
         )}
 
-        {/* Auto-Detect Camera Button */}
+        {/* Live Camera Detect Button */}
         <TouchableOpacity
           style={[styles.cameraBtn, loading && styles.btnDisabled]}
           onPress={openLiveCamera}
@@ -383,7 +501,7 @@ const CameraToText = ({ navigation }) => {
           disabled={loading || !device}
         >
           <Entypo name="camera" size={22} color="#fff" />
-          <Text style={styles.cameraBtnText}>Auto-Detect Camera</Text>
+          <Text style={styles.cameraBtnText}>Live Camera Detect</Text>
         </TouchableOpacity>
 
         {/* Manual Capture Button */}
@@ -404,7 +522,7 @@ const CameraToText = ({ navigation }) => {
           activeOpacity={0.8}
           disabled={loading}
         >
-          <Ionicons name="images" size={22} color={colors.textPrimary} />
+          <Ionicons name="image" size={22} color={colors.textPrimary} />
           <Text style={styles.galleryBtnText}>Choose from Gallery</Text>
         </TouchableOpacity>
       </ScrollView>
@@ -454,15 +572,108 @@ const CameraToText = ({ navigation }) => {
               <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
             </TouchableOpacity>
             <Text style={styles.modalHeading}>Extracted Text</Text>
-            <View style={{ width: 40 }} />
+            <TouchableOpacity
+              onPress={speakText}
+              style={styles.modalSpeakBtn}
+              activeOpacity={0.7}
+            >
+              <Ionicons
+                name={isSpeaking ? "stop-circle" : "volume-high"}
+                size={20}
+                color={colors.textPrimary}
+              />
+              <Text style={styles.modalSpeakBtnText}>
+                {isSpeaking ? 'Stop' : 'Speak'}
+              </Text>
+            </TouchableOpacity>
           </View>
           <ScrollView
             style={styles.modalTextScroll}
             contentContainerStyle={styles.modalTextContent}
             showsVerticalScrollIndicator={false}
           >
-            <Text style={styles.modalText} selectable>{extractedText}</Text>
+            <View style={styles.wordsContainer}>
+              {extractedText.split(/\s+/).map((word, index) => (
+                <TouchableOpacity
+                  key={index}
+                  onPress={() => speakFromWord(index)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.modalText}>
+                    {word}{' '}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
           </ScrollView>
+        </View>
+      </Modal>
+
+      {/* Warning Modal */}
+      <Modal
+        visible={showWarningModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowWarningModal(false)}
+      >
+        <View style={styles.warningModalOverlay}>
+          <BlurView blurType={colors.blurType} blurAmount={10} style={StyleSheet.absoluteFillObject} />
+          <View style={styles.warningModalBox}>
+            {/* Title with Icon */}
+            <View style={styles.warningTitleContainer}>
+              <Ionicons name="warning" size={32} color={accent} />
+              <Text style={styles.warningTitle}>Heavy Task Warning</Text>
+            </View>
+
+            {/* Description */}
+            <Text style={styles.warningMessage}>
+              Live Camera detection is a very heavy task and will give heavy load to your device,
+              this may slow down low-end devices and eventually crash the app. If you are using
+              low-end device, consider using Manual capture or from Gallery.
+            </Text>
+
+            {/* Tips */}
+            <View style={styles.warningTipsContainer}>
+              <Ionicons name="bulb" size={18} color={accent} />
+              <Text style={styles.warningTips}>
+                For high-end devices you can use the Live camera but for low-end devices don't use Live Camera.
+              </Text>
+            </View>
+
+            {/* Don't Show Again Checkbox */}
+            <TouchableOpacity
+              style={styles.checkboxContainer}
+              onPress={() => handleDontShowAgain(!dontShowWarning)}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.checkbox, dontShowWarning && styles.checkboxChecked]}>
+                {dontShowWarning && <Ionicons name="checkmark" size={18} color="#fff" />}
+              </View>
+              <Text style={styles.checkboxLabel}>Don't show again</Text>
+            </TouchableOpacity>
+
+            {/* Buttons */}
+            <View style={styles.warningButtonsContainer}>
+              <TouchableOpacity
+                style={styles.warningLeaveBtn}
+                onPress={() => setShowWarningModal(false)}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.warningLeaveBtnText}>Leave</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.warningContinueBtn}
+                onPress={() => {
+                  setShowWarningModal(false);
+                  startLiveCamera();
+                }}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.warningContinueBtnText}>Continue Live</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
       </Modal>
     </View>
@@ -583,6 +794,10 @@ const createStyles = (colors, accent, isDark) => StyleSheet.create({
     flex: 1,
     paddingRight: 48,
   },
+  wordsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
   extractedText: {
     fontSize: 15,
     color: colors.textPrimary,
@@ -617,6 +832,22 @@ const createStyles = (colors, accent, isDark) => StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: isDark ? '#FF6F00' : '#fff',
+  },
+  speakButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 15,
+    paddingHorizontal: 16,
+    backgroundColor: isDark ? '#fff' : '#4CAF50',
+    borderRadius: 42,
+  },
+  speakButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: isDark ? '#4CAF50' : '#fff',
   },
   shareButton: {
     flex: 1,
@@ -818,6 +1049,21 @@ const createStyles = (colors, accent, isDark) => StyleSheet.create({
     fontWeight: '700',
     color: colors.textPrimary,
   },
+  modalSpeakBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: isDark ? '#3a3a3a' : '#e0e0e0',
+    borderRadius: 50,
+  },
+  modalSpeakBtnText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.textPrimary,
+  },
   modalTextScroll: {
     flex: 1,
     paddingBottom:50,
@@ -830,6 +1076,109 @@ const createStyles = (colors, accent, isDark) => StyleSheet.create({
     fontSize: 16,
     color: colors.textPrimary,
     lineHeight: 28,
+  },
+
+  // Warning Modal - Bottom Sheet Style
+  warningModalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  warningModalBox: {
+    backgroundColor: colors.card,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    paddingHorizontal: 20,
+    paddingTop: 28,
+    paddingBottom: 32,
+  },
+  warningTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 16,
+  },
+  warningTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: colors.textPrimary,
+  },
+  warningMessage: {
+    fontSize: 15,
+    color: colors.textPrimary,
+    lineHeight: 23,
+    marginBottom: 16,
+    textAlign: 'left',
+  },
+  warningTipsContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: isDark ? '#2a2a2a' : '#fff3e0',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 16,
+    gap: 8,
+  },
+  warningTips: {
+    flex: 1,
+    fontSize: 14,
+    color: colors.textPrimary,
+    lineHeight: 20,
+  },
+  checkboxContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 24,
+  },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: colors.textSecondary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkboxChecked: {
+    backgroundColor: accent,
+    borderColor: accent,
+  },
+  checkboxLabel: {
+    fontSize: 15,
+    color: colors.textPrimary,
+    fontWeight: '500',
+  },
+  warningButtonsContainer: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
+    marginBottom: 50,
+  },
+  warningLeaveBtn: {
+    flex: 1,
+    paddingVertical: 16,
+    borderRadius: 60,
+    backgroundColor: isDark ? '#2a2a2a' : '#f0f0f0',
+    borderWidth: 1,
+    borderColor: isDark ? '#3a3a3a' : '#e0e0e0',
+    alignItems: 'center',
+  },
+  warningLeaveBtnText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.textPrimary,
+  },
+  warningContinueBtn: {
+    flex: 1,
+    paddingVertical: 16,
+    borderRadius: 60,
+    backgroundColor: accent,
+    alignItems: 'center',
+  },
+  warningContinueBtnText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#fff',
   },
 });
 
