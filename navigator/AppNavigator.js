@@ -9,6 +9,7 @@ import ImageFormatConverter from '../Screens/ImageFormatConverter';
 import VideoCompressor from '../Screens/VideoCompressor';
 import AudioCompressor from '../Screens/AudioCompressor';
 import CameraToText from '../Screens/CameraToText';
+import TextToSpeech from '../Screens/TextToSpeech';
 import QRCodeTools from '../Screens/QRCodeTools';
 
 const Stack = createNativeStackNavigator();
@@ -31,6 +32,7 @@ const AppNavigator = () => {
       <Stack.Screen name="AudioCompressor" component={AudioCompressor} />
       <Stack.Screen name="ImageFormatConverter" component={ImageFormatConverter} />
       <Stack.Screen name="CameraToText" component={CameraToText} />
+      <Stack.Screen name="TextToSpeech" component={TextToSpeech} />
       <Stack.Screen name="QRCodeTools" component={QRCodeTools} />
     </Stack.Navigator>
   );

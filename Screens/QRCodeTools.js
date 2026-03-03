@@ -16,7 +16,9 @@ import {
   TouchableWithoutFeedback,
   Keyboard,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { BlurView } from '@react-native-community/blur';
 import { useTheme } from '../Services/ThemeContext';
@@ -94,11 +96,38 @@ const QRCodeTools = ({ navigation }) => {
     setIsGenerating(false);
   };
 
-  const openScanner = () => {
-    setShowScanner(true);
-  };
+const openScanner = async () => {
+  try {
+    // Check current permission
+    const { status } = await ImagePicker.getCameraPermissionsAsync();
 
-  const handleBarcodeScan = (event) => {
+    if (status === 'granted') {
+      setShowScanner(true);
+      return;
+    }
+
+    // Request permission
+    const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
+
+    if (permissionResult.status === 'granted') {
+      setShowScanner(true);
+    } else {
+      Alert.alert(
+        "Camera Permission Required",
+        "Please enable camera permission in settings to scan QR codes.",
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Open Settings", onPress: () => Linking.openSettings() }
+        ]
+      );
+    }
+  } catch (error) {
+    console.error("Permission error:", error);
+    triggerToast('Error', 'Unable to access camera permission', 'alert', 2000);
+  }
+};
+
+  const handleBarcodeScan = (event) => { 
     if (event.nativeEvent.codeStringValue) {
       setScannedData(event.nativeEvent.codeStringValue);
       setShowScanner(false);
@@ -647,9 +676,9 @@ const createStyles = (colors, accent, isDark) => StyleSheet.create({
   qrContainer: {
     padding: 20,
     backgroundColor: '#ffffff',
-    borderRadius: 20,
-    marginBottom: 20,
-    borderWidth: 5,
+    borderRadius: 40,
+    marginBottom: 70,
+    borderWidth: 10,
     borderColor: accent,
   },
   loaderContainer: {

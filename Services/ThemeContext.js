@@ -7,11 +7,17 @@ const ThemeContext = createContext(null);
 const STORAGE_KEY = 'appTheme';
 
 export const ThemeProvider = ({ children }) => {
-  const [isDark, setIsDark] = useState(true);
+  const [isDark, setIsDark] = useState(false); // Default to light mode
 
   useEffect(() => {
+    // Load saved theme preference on app start
     AsyncStorage.getItem(STORAGE_KEY).then((saved) => {
-      if (saved === 'light') setIsDark(false);
+      if (saved === 'dark') {
+        setIsDark(true);
+      } else if (saved === 'light') {
+        setIsDark(false);
+      }
+      // If no saved preference, keep default (light mode)
     });
   }, []);
 

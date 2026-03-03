@@ -9,8 +9,8 @@ import {
   Modal,
   Animated,
 } from 'react-native';
-import { useState, useMemo, useRef } from 'react';
-import { MaterialIcons, MaterialCommunityIcons, AntDesign, FontAwesome5, Ionicons, Entypo, Feather } from '@expo/vector-icons';
+import { useState, useMemo, useRef, useEffect } from 'react';
+import { MaterialIcons, MaterialCommunityIcons, AntDesign, FontAwesome5, FontAwesome6, Ionicons, Entypo, Feather } from '@expo/vector-icons';
 import { BlurView } from '@react-native-community/blur';
 import { useTheme } from '../Services/ThemeContext';
 
@@ -66,6 +66,19 @@ const CARDS = [
     ),
     accent: '#FF6F00',
     screen: 'CameraToText',
+  },
+  {
+    title: 'Text To Speech',
+    wideIcon: true,
+    iconComponent: (color) => (
+      <>
+        <Ionicons name="document-text" size={24} color={color} />
+        <Feather name="repeat" size={19} color={color} />
+        <FontAwesome6 name="volume-high" size={24} color={color} />
+      </>
+    ),
+    accent: '#00f2ff',
+    screen: 'TextToSpeech',
   },
   {
     title: 'QR Code Tools',
@@ -147,6 +160,12 @@ const FEATURES = [
     desc: 'Capture images with your camera and extract text using OCR technology instantly.',
   },
   {
+    icon: <FontAwesome6 name="volume-high" size={20} color="#00f2ff" />,
+    accent: '#00f2ff',
+    title: 'Text To Speech',
+    desc: 'Convert any text into natural-sounding speech with customizable voice settings and playback controls.',
+  },
+  {
     icon: <Ionicons name="qr-code" size={20} color="#6B8E23" />,
     accent: '#6B8E23',
     title: 'QR Code Tools',
@@ -179,6 +198,11 @@ const Home = ({ navigation }) => {
 
   // Animation for theme toggle
   const themeToggleAnimation = useRef(new Animated.Value(isDark ? 1 : 0)).current;
+
+  // Sync animation with isDark state (for when theme loads from AsyncStorage)
+  useEffect(() => {
+    themeToggleAnimation.setValue(isDark ? 1 : 0);
+  }, [isDark, themeToggleAnimation]);
 
   return (
     <View style={styles.container}>
@@ -268,18 +292,19 @@ const Home = ({ navigation }) => {
               A powerful all-in-one toolkit for media processing — right on your device.
             </Text>
 
-            {/* Security Section */}
-            <View style={styles.securityCard}>
-              <View style={styles.securityHeader}>
-                <Ionicons name="shield-checkmark" size={24} color="#4CAF50" />
-                <Text style={styles.securityTitle}>Security First</Text>
-              </View>
-              <Text style={styles.securityDesc}>
-                This is a completely offline application. All your images, documents, and data are processed locally on your device. Nothing is uploaded to any server or shared with third parties. Your privacy and security are our top priority.
-              </Text>
-            </View>
-
             <ScrollView showsVerticalScrollIndicator={false} style={styles.featureScroll}>
+              {/* Security Section */}
+              <View style={styles.securityCard}>
+                <View style={styles.securityHeader}>
+                  <Ionicons name="shield-checkmark" size={24} color="#4CAF50" />
+                  <Text style={styles.securityTitle}>Security First</Text>
+                </View>
+                <Text style={styles.securityDesc}>
+                  This is a completely offline application. All your images, documents, and data are processed locally on your device. Nothing is uploaded to any server or shared with third parties. Your privacy and security are our top priority.
+                </Text>
+              </View>
+
+              {/* Features */}
               {FEATURES.map((f, i) => (
                 <View key={i} style={[styles.featureRow, { borderColor: f.accent + '30' }]}>
                   <View style={[styles.featureIconBox, { backgroundColor: f.accent + '20' }]}>

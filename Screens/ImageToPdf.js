@@ -14,6 +14,10 @@ import {
   PanResponder,
   Pressable,
   Animated,
+  TextInput,
+  KeyboardAvoidingView,
+  TouchableWithoutFeedback,
+  Keyboard,
 } from 'react-native';
 
 import { Ionicons, FontAwesome5, MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -61,6 +65,13 @@ const ImageToPdf = ({ navigation }) => {
   const [sortPositionModalVisible, setSortPositionModalVisible] = useState(false); // Position modal
   const [applyToAll, setApplyToAll] = useState(false); // Apply edits to all images toggle
   const [editModalToast, setEditModalToast] = useState(null); // Toast for edit modal
+  const [isCompressing, setIsCompressing] = useState(false); // Compression progress state
+  const [compressionProgress, setCompressionProgress] = useState({ current: 0, total: 0 }); // Compression progress
+  const [renameModalVisible, setRenameModalVisible] = useState(false); // Rename modal
+  const [pdfName, setPdfName] = useState(''); // PDF name
+  const [tempPdfName, setTempPdfName] = useState(''); // Temp name for modal input
+  const [compressionQuality, setCompressionQuality] = useState('small'); // Compression quality: high, balanced, small
+  const [qualityModalVisible, setQualityModalVisible] = useState(false); // Quality selector modal
 
   // Ref for capturing the filtered image view
   const imageViewRef = useRef(null);
@@ -122,7 +133,7 @@ const ImageToPdf = ({ navigation }) => {
     });
 
     if (!result.canceled && result.assets?.length > 0) {
-      const MAX_SIZE = 8 * 1024 * 1024;
+      const MAX_SIZE = 12 * 1024 * 1024;
       const MAX_COUNT = 15;
       const remaining = MAX_COUNT - images.length;
 
@@ -139,7 +150,7 @@ const ImageToPdf = ({ navigation }) => {
       if (oversized.length > 0) {
         triggerToast(
           `${oversized.length} image${oversized.length > 1 ? 's' : ''} skipped`,
-          'Each image must be 8 MB or less.',
+          'Each image must be 12 MB or less.',
           'alert',
           3500
         );
@@ -287,7 +298,7 @@ const ImageToPdf = ({ navigation }) => {
 
         // Apply rotation to current image
         if (rotation !== 0) {
-          const manipulated = await ImageManipulator.manipulateAsync(
+          const manipulated = await ImageManipulator.manipulate(
             currentImageResult,
             [{ rotate: rotation }],
             { compress: 1, format: ImageManipulator.SaveFormat.PNG }
@@ -302,7 +313,7 @@ const ImageToPdf = ({ navigation }) => {
         if (rotation !== 0) {
           for (let i = 0; i < updatedImages.length; i++) {
             if (i !== editIndex) {
-              const manipulated = await ImageManipulator.manipulateAsync(
+              const manipulated = await ImageManipulator.manipulate(
                 updatedImages[i].uri,
                 [{ rotate: rotation }],
                 { compress: 1, format: ImageManipulator.SaveFormat.PNG }
@@ -329,7 +340,7 @@ const ImageToPdf = ({ navigation }) => {
         }
 
         if (rotation !== 0) {
-          const manipulated = await ImageManipulator.manipulateAsync(
+          const manipulated = await ImageManipulator.manipulate(
             result,
             [{ rotate: rotation }],
             { compress: 1, format: ImageManipulator.SaveFormat.PNG }
@@ -365,16 +376,35 @@ const ImageToPdf = ({ navigation }) => {
   };
 
   const rotateLeft = () => {
+    // Check if filter is applied
+    if (activeFilter) {
+      setEditModalToast('Please save the current filter edit before applying rotation');
+      setTimeout(() => setEditModalToast(null), 3000);
+      return;
+    }
     setRotation((prev) => (prev - 90 + 360) % 360);
     setHasChanges(true);
   };
 
   const rotateRight = () => {
+    // Check if filter is applied
+    if (activeFilter) {
+      setEditModalToast('Please save the current filter edit before applying rotation');
+      setTimeout(() => setEditModalToast(null), 3000);
+      return;
+    }
     setRotation((prev) => (prev + 90) % 360);
     setHasChanges(true);
   };
 
   const selectFilter = (filterName) => {
+    // Check if rotation is applied
+    if (rotation !== 0) {
+      setEditModalToast('Please save the current rotation edit before applying filter');
+      setTimeout(() => setEditModalToast(null), 3000);
+      return;
+    }
+
     // Single selection - toggle off if same filter clicked
     if (activeFilter === filterName) {
       setActiveFilter(null);
@@ -438,15 +468,83 @@ const ImageToPdf = ({ navigation }) => {
 
   const convertToPdf = async () => {
     if (images.length === 0) return;
-    setLoading(true);
+
+    // Show compression modal
+    setIsCompressing(true);
+    setCompressionProgress({ current: 0, total: images.length });
+
     try {
-      const base64Images = await Promise.all(
-        images.map(async (img) => {
-          const base64 = await getBase64(img.uri);
-          const ext = img.uri.toLowerCase().includes('.png') ? 'png' : 'jpeg';
-          return `data:image/${ext};base64,${base64}`;
-        })
-      );
+      // Compress images one by one to show progress
+      const base64Images = [];
+      for (let i = 0; i < images.length; i++) {
+        try {
+          setCompressionProgress({ current: i + 1, total: images.length });
+
+          // Compress based on selected quality
+          let resizeWidth, compressQuality;
+          if (compressionQuality === 'high') {
+            resizeWidth = 1200; // High quality for text/documents
+            compressQuality = 0.8; // 80% quality
+          } else if (compressionQuality === 'balanced') {
+            resizeWidth = 700; // Balanced for general use
+            compressQuality = 0.5; // 50% quality
+          } else { // 'small'
+            resizeWidth = 500; // Small file size
+            compressQuality = 0.3; // 30% quality
+          }
+
+          const compressedImage = await ImageManipulator.manipulateAsync(
+            images[i].uri,
+            [{ resize: { width: resizeWidth } }],
+            { compress: compressQuality, format: ImageManipulator.SaveFormat.JPEG }
+          );
+
+          const base64 = await getBase64(compressedImage.uri);
+          base64Images.push(`data:image/jpeg;base64,${base64}`);
+
+          // Clean up temporary file to free memory
+          try {
+            const tempFile = new File(compressedImage.uri);
+            if (tempFile.exists) {
+              tempFile.delete();
+            }
+          } catch (cleanupError) {
+            // Ignore cleanup errors
+          }
+        } catch (imgError) {
+          console.log(`Error compressing image ${i}:`, imgError);
+          // If compression fails, compress original with very aggressive settings
+          try {
+            const fallbackCompressed = await ImageManipulator.manipulateAsync(
+              images[i].uri,
+              [{ resize: { width: 400 } }],
+              { compress: 0.5, format: ImageManipulator.SaveFormat.JPEG }
+            );
+            const base64 = await getBase64(fallbackCompressed.uri);
+            base64Images.push(`data:image/jpeg;base64,${base64}`);
+
+            // Clean up
+            try {
+              const tempFile = new File(fallbackCompressed.uri);
+              if (tempFile.exists) tempFile.delete();
+            } catch {}
+          } catch (fallbackError) {
+            console.log(`Fallback compression also failed for image ${i}`);
+            // Skip this image to prevent crash
+          }
+        }
+      }
+
+      // Close compression modal and show converting state
+      setIsCompressing(false);
+      setLoading(true);
+
+      // Check if we have any images to convert
+      if (base64Images.length === 0) {
+        throw new Error('No images to convert to PDF');
+      }
+
+      console.log(`Converting ${base64Images.length} images to PDF...`);
 
       const selectedSize = PAGE_SIZES[pageSize];
       const html = showFrames ? `
@@ -501,7 +599,21 @@ const ImageToPdf = ({ navigation }) => {
       `;
 
       const { uri } = await Print.printToFileAsync({ html, width: selectedSize.width, height: selectedSize.height });
-      setPdfUri(uri);
+      console.log('PDF created successfully at:', uri);
+
+      // Rename PDF if custom name is set
+      if (pdfName && pdfName.trim() !== '') {
+        const customFileName = `${pdfName.trim()}.pdf`;
+        const customFile = new File(Paths.cache, customFileName);
+        const sourceFile = new File(uri);
+        sourceFile.copy(customFile);
+        setPdfUri(customFile.uri);
+        console.log('PDF renamed to:', customFile.uri);
+      } else {
+        setPdfUri(uri);
+      }
+
+      console.log('PDF conversion completed successfully');
     } catch (error) {
       console.log('PDF conversion error:', error);
       triggerToast('Error', 'Failed to convert images to PDF. Please try again.', 'error', 3000);
@@ -581,15 +693,19 @@ const ImageToPdf = ({ navigation }) => {
                 >
                   <Text style={styles.clearAllText}>Clear All</Text>
                 </TouchableOpacity>
-                {!isSorting ? (
-                  <TouchableOpacity onPress={startSorting} activeOpacity={0.7} style={styles.sortBtn}>
+                {!isSorting && !pdfUri ? (
+                  <TouchableOpacity
+                    onPress={startSorting}
+                    activeOpacity={0.7}
+                    style={styles.sortBtn}
+                  >
                     <Text style={styles.sortBtnText}>Sort</Text>
                   </TouchableOpacity>
-                ) : (
+                ) : isSorting ? (
                   <TouchableOpacity onPress={doneSorting} activeOpacity={0.7} style={styles.doneBtn}>
                     <Text style={styles.doneBtnText}>Done</Text>
                   </TouchableOpacity>
-                )}
+                ) : null}
               </View>
             </View>
             <ScrollView
@@ -607,7 +723,7 @@ const ImageToPdf = ({ navigation }) => {
                       <Image source={{ uri: img.uri }} style={styles.thumb} />
 
                       {/* Edit Button - Top Left */}
-                      {!isSorting && (
+                      {!isSorting && !pdfUri && (
                         <TouchableOpacity
                           style={styles.editBtn}
                           onPress={() => openEditModal(index)}
@@ -695,10 +811,10 @@ const ImageToPdf = ({ navigation }) => {
               activeOpacity={0.7}
             >
               <View style={styles.frameToggleContent}>
-                <MaterialIcons name="crop-free" size={20} color={colors.textPrimary} />
+                <MaterialIcons name="crop-din" size={20} color={colors.textPrimary} />
                 <Text style={styles.frameToggleText}>Show Frames in PDF</Text>
               </View>
-              <View style={[styles.toggleSwitch, showFrames && styles.toggleSwitchActive]}>
+              <View style={[styles.toggleSwitch, showFrames && styles.toggleSwitchActive]}> 
                 <Animated.View
                   style={[
                     styles.toggleThumb,
@@ -721,10 +837,43 @@ const ImageToPdf = ({ navigation }) => {
               onPress={() => setPageSizeModalVisible(true)}
               activeOpacity={0.7}
             >
-              <MaterialIcons name="aspect-ratio" size={20} color={colors.textPrimary} />
+              <MaterialCommunityIcons name="fit-to-page" size={20} color={colors.textPrimary} />
               <Text style={styles.pageSizeBtnLabel}>Page Size</Text>
               <View style={styles.pageSizeBtnRight}>
                 <Text style={styles.pageSizeBtnValue}>{pageSize}</Text>
+                <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
+              </View>
+            </TouchableOpacity>
+
+            {/* Rename Button */}
+            <TouchableOpacity
+              style={styles.pageSizeBtn}
+              onPress={() => {
+                setTempPdfName(pdfName);
+                setRenameModalVisible(true);
+              }}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="pencil" size={20} color={colors.textPrimary} />
+              <Text style={styles.pageSizeBtnLabel}>Rename PDF</Text>
+              <View style={styles.pageSizeBtnRight}>
+                <Text style={styles.pageSizeBtnValue}>{pdfName || 'Default'}</Text>
+                <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
+              </View>
+            </TouchableOpacity>
+
+            {/* Compression Quality Selector */}
+            <TouchableOpacity
+              style={styles.pageSizeBtn}
+              onPress={() => setQualityModalVisible(true)}
+              activeOpacity={0.7}
+            >
+              <FontAwesome5 name="compress" size={20} color={colors.textPrimary} />
+              <Text style={styles.pageSizeBtnLabel}>PDF Quality</Text>
+              <View style={styles.pageSizeBtnRight}>
+                <Text style={styles.pageSizeBtnValue}>
+                  {compressionQuality === 'high' ? 'High' : compressionQuality === 'balanced' ? 'Balanced' : 'Small'}
+                </Text>
                 <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
               </View>
             </TouchableOpacity>
@@ -745,7 +894,7 @@ const ImageToPdf = ({ navigation }) => {
               <FontAwesome5 name="file-pdf" size={18} color="#fff" />
             )}
             <Text style={styles.convertBtnText}>
-              {loading ? 'Converting...' : `Convert ${images.length} image${images.length > 1 ? 's' : ''} to PDF`}
+              {loading ? 'Converting...' : 'Convert to PDF'}
             </Text>
           </TouchableOpacity>
         )}
@@ -924,73 +1073,20 @@ const ImageToPdf = ({ navigation }) => {
               </Text>
             </View>
 
-            {/* Apply to All Toggle */}
+            {/* Filters Button */}
             <TouchableOpacity
-              style={styles.applyToAllToggle}
-              onPress={() => {
-                const newValue = !applyToAll;
-                setApplyToAll(newValue);
-
-                // Animate toggle
-                Animated.timing(applyToAllAnimation, {
-                  toValue: newValue ? 1 : 0,
-                  duration: 200,
-                  useNativeDriver: true,
-                }).start();
-
-                if (newValue) {
-                  setEditModalToast('Only rotational edits will be applied to all images');
-                  setTimeout(() => setEditModalToast(null), 3000);
-                }
-              }}
+              style={styles.filtersBtnFull}
+              onPress={() => setFiltersModalVisible(true)}
               activeOpacity={0.7}
             >
-              <View style={styles.applyToAllContent}>
-                <MaterialIcons name="layers" size={20} color={colors.textPrimary} />
-                <Text style={styles.applyToAllText}>Apply rotation to all images</Text>
-              </View>
-              <View style={[styles.toggleSwitch, applyToAll && styles.toggleSwitchActive]}>
-                <Animated.View
-                  style={[
-                    styles.toggleThumb,
-                    {
-                      transform: [{
-                        translateX: applyToAllAnimation.interpolate({
-                          inputRange: [0, 1],
-                          outputRange: [0.5, 24.5]
-                        })
-                      }]
-                    }
-                  ]}
-                />
-              </View>
+              <MaterialIcons name="filter" size={24} color={colors.textPrimary} />
+              <Text style={styles.actionBtnText}>Filters</Text>
+              {activeFilter && (
+                <View style={styles.filterBadge}>
+                  <Text style={styles.filterBadgeText}>1</Text>
+                </View>
+              )}
             </TouchableOpacity>
-
-            {/* Contrast Control */}
-            <View style={styles.controlSection}>
-              <View style={styles.controlHeader}>
-                <Ionicons name="contrast" size={20} color={colors.textPrimary} />
-                <Text style={styles.controlLabel}>Contrast</Text>
-                <Text style={styles.controlValue}>{Math.round(contrast * 100)}%</Text>
-              </View>
-              <View style={styles.sliderContainer}>
-                <Slider
-                  style={styles.slider}
-                  minimumValue={0.5}
-                  maximumValue={1.5}
-                  value={contrast}
-                  onValueChange={handleContrastChange}
-                  minimumTrackTintColor={accent}
-                  maximumTrackTintColor={isDark ? '#444' : '#d0d0d0'}
-                  thumbTintColor={accent}
-                  {...Platform.select({
-                    ios: {
-                      thumbStyle: { width: 28, height: 28 }
-                    }
-                  })}
-                />
-              </View>
-            </View>
 
             {/* Action Buttons */}
             <View style={styles.actionButtons}>
@@ -1002,21 +1098,6 @@ const ImageToPdf = ({ navigation }) => {
               >
                 <MaterialCommunityIcons name="rotate-left" size={24} color={colors.textPrimary} />
                 <Text style={styles.actionBtnText}>Rotate Left</Text>
-              </TouchableOpacity>
-
-              {/* Filters Button */}
-              <TouchableOpacity
-                style={[styles.actionBtn, styles.filtersBtn]}
-                onPress={() => setFiltersModalVisible(true)}
-                activeOpacity={0.7}
-              >
-                <MaterialIcons name="filter" size={24} color={colors.textPrimary} />
-                <Text style={styles.actionBtnText}>Filters</Text>
-                {activeFilter && (
-                  <View style={styles.filterBadge}>
-                    <Text style={styles.filterBadgeText}>1</Text>
-                  </View>
-                )}
               </TouchableOpacity>
 
               {/* Rotate Right Button */}
@@ -1192,6 +1273,144 @@ const ImageToPdf = ({ navigation }) => {
                     <Text style={styles.filterOptionText}>Position {index + 1}</Text>
                   </View>
                   {selectedImageForSort === index && (
+                    <Ionicons name="checkmark-circle" size={24} color={accent} />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Compression Progress Modal */}
+      <Modal
+        visible={isCompressing}
+        transparent
+        animationType="fade"
+      >
+        <View style={styles.compressionModalOverlay}>
+          <BlurView blurType={colors.blurType} blurAmount={10} style={StyleSheet.absoluteFillObject} />
+          <View style={styles.compressionModalBox}>
+            <ActivityIndicator size="large" color={accent} />
+            <Text style={styles.compressionModalTitle}>Compressing Images</Text>
+            <Text style={styles.compressionModalText}>
+              {compressionProgress.current} of {compressionProgress.total}
+            </Text>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Rename PDF Modal */}
+      <Modal
+        visible={renameModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setRenameModalVisible(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={{ flex: 1 }}
+        >
+          <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+            <View style={styles.renameModalOverlay}>
+              <BlurView blurType={colors.blurType} blurAmount={10} style={StyleSheet.absoluteFillObject} />
+              <TouchableWithoutFeedback>
+                <View style={styles.renameModalBox}>
+                  <Text style={styles.renameModalTitle}>Rename PDF</Text>
+
+                  <TextInput
+                    style={styles.renameInput}
+                    placeholder="Enter PDF name..."
+                    placeholderTextColor={colors.textSecondary}
+                    value={tempPdfName}
+                    onChangeText={setTempPdfName}
+                    autoFocus
+                  />
+
+                  <View style={styles.renameButtonsContainer}>
+                    <TouchableOpacity
+                      style={styles.renameCancelButton}
+                      onPress={() => {
+                        setRenameModalVisible(false);
+                        setTempPdfName(pdfName);
+                      }}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={styles.renameCancelButtonText}>Cancel</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={styles.renameDoneButton}
+                      onPress={() => {
+                        if (tempPdfName.trim() === '') {
+                          triggerToast('Error', 'Please enter a name for the PDF', 'error', 2000);
+                          return;
+                        }
+                        setPdfName(tempPdfName);
+                        setRenameModalVisible(false);
+                        triggerToast('Success', 'PDF name updated', 'success', 2000);
+                      }}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={styles.renameDoneButtonText}>Done</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </TouchableWithoutFeedback>
+            </View>
+          </TouchableWithoutFeedback>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Quality Selector Modal */}
+      <Modal
+        visible={qualityModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setQualityModalVisible(false)}
+      >
+        <Pressable style={styles.pageSizeModalOverlay} onPress={() => setQualityModalVisible(false)}>
+          <BlurView blurType={colors.blurType} blurAmount={10} style={StyleSheet.absoluteFillObject} />
+          <Pressable style={styles.pageSizeModalContent} onPress={() => {}}>
+            <View style={styles.filtersModalHeader}>
+              <Text style={styles.filtersModalTitle}>Select PDF Quality</Text>
+              <TouchableOpacity onPress={() => setQualityModalVisible(false)}>
+                <Ionicons name="close" size={24} color={colors.textPrimary} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.pageSizeScrollView} showsVerticalScrollIndicator={false}>
+              {[
+                { key: 'high', label: 'High Quality', desc: 'Best for text/documents (1200px, 80%)', icon: 'ultra-high-definition', iconLib: 'MaterialCommunityIcons' },
+                { key: 'balanced', label: 'Balanced', desc: 'Good for mixed content (700px, 50%)', icon: 'hd', iconLib: 'MaterialIcons' },
+                { key: 'small', label: 'Small File', desc: 'Smallest size (500px, 30%)', icon: 'quality-low', iconLib: 'MaterialCommunityIcons' }
+              ].map((quality, index) => (
+                <TouchableOpacity
+                  key={quality.key}
+                  style={[
+                    styles.filterOption,
+                    compressionQuality === quality.key && styles.filterOptionActive,
+                    index === 2 && styles.filterOptionLast
+                  ]}
+                  onPress={() => {
+                    setCompressionQuality(quality.key);
+                    setQualityModalVisible(false);
+                    triggerToast('PDF Quality', `Set to ${quality.label}`, 'info', 2000);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.filterOptionLeft}>
+                    {quality.iconLib === 'MaterialCommunityIcons' ? (
+                      <MaterialCommunityIcons name={quality.icon} size={24} color={colors.textPrimary} />
+                    ) : (
+                      <MaterialIcons name={quality.icon} size={24} color={colors.textPrimary} />
+                    )}
+                    <View>
+                      <Text style={styles.filterOptionText}>{quality.label}</Text>
+                      <Text style={styles.pageSizeSubtext}>{quality.desc}</Text>
+                    </View>
+                  </View>
+                  {compressionQuality === quality.key && (
                     <Ionicons name="checkmark-circle" size={24} color={accent} />
                   )}
                 </TouchableOpacity>
@@ -1906,14 +2125,12 @@ const createStyles = (colors, accent, isDark) => StyleSheet.create({
   },
   actionBtn: {
     flex: 1,
-    backgroundColor: isDark ? '#2a2a2a' : '#fff',
+    backgroundColor: isDark ? '#2a2a2a' : '#f5f5f5',
     borderRadius: 66,
     paddingVertical: 16,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    borderWidth: isDark ? 0 : 1,
-    borderColor: '#e0e0e0',
   },
   actionBtnText: {
     color: colors.textPrimary,
@@ -1921,6 +2138,17 @@ const createStyles = (colors, accent, isDark) => StyleSheet.create({
     fontWeight: '600',
   },
   filtersBtn: {
+    position: 'relative',
+  },
+  filtersBtnFull: {
+    backgroundColor: isDark ? '#2a2a2a' : '#f5f5f5',
+    borderRadius: 66,
+    paddingVertical: 16,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 10,
+    marginBottom: 12,
     position: 'relative',
   },
   filterBadge: {
@@ -1973,13 +2201,13 @@ const createStyles = (colors, accent, isDark) => StyleSheet.create({
     justifyContent: 'space-between',
     padding: 16,
     borderRadius: 70,
-    marginBottom: 8,
+    marginBottom: 15,
     backgroundColor: isDark ? '#2a2a2a' : '#f5f5f5',
     borderWidth: 2,
     borderColor: 'transparent',
   },
   filterOptionLast: {
-    marginBottom: 24,
+    marginBottom: 30,
   },
   filterOptionActive: {
     borderColor: accent,
@@ -2021,6 +2249,90 @@ const createStyles = (colors, accent, isDark) => StyleSheet.create({
   },
 
   // PDF Viewer Modal
+  // Compression Progress Modal
+  compressionModalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  compressionModalBox: {
+    backgroundColor: colors.card,
+    borderRadius: 20,
+    padding: 40,
+    alignItems: 'center',
+    minWidth: 250,
+  },
+  compressionModalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    marginTop: 20,
+    marginBottom: 8,
+  },
+  compressionModalText: {
+    fontSize: 16,
+    color: colors.textSecondary,
+    fontWeight: '600',
+  },
+
+  // Rename Modal
+  renameModalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  renameModalBox: {
+    backgroundColor: colors.card,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    paddingHorizontal: 20,
+    paddingTop: 28,
+    paddingBottom: 50,
+  },
+  renameModalTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    marginBottom: 20,
+  },
+  renameInput: {
+    backgroundColor: isDark ? '#2a2a2a' : '#f5f5f5',
+    borderRadius: 16,
+    padding: 16,
+    fontSize: 16,
+    color: colors.textPrimary,
+    borderWidth: 1,
+    borderColor: isDark ? '#3a3a3a' : '#e0e0e0',
+    marginBottom: 20,
+  },
+  renameButtonsContainer: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  renameCancelButton: {
+    flex: 1,
+    backgroundColor: isDark ? '#2a2a2a' : '#f5f5f5',
+    paddingVertical: 16,
+    borderRadius: 60,
+    alignItems: 'center',
+  },
+  renameCancelButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.textPrimary,
+  },
+  renameDoneButton: {
+    flex: 1,
+    backgroundColor: accent,
+    paddingVertical: 16,
+    borderRadius: 60,
+    alignItems: 'center',
+  },
+  renameDoneButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#fff',
+  },
+
   pdfViewerContainer: {
     flex: 1,
     backgroundColor: colors.bg,

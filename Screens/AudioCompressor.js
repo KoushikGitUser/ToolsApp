@@ -20,8 +20,8 @@ import { File } from 'expo-file-system';
 import { useAudioPlayer, useAudioPlayerStatus, setAudioModeAsync } from 'expo-audio';
 import { useTheme } from '../Services/ThemeContext';
 
-const ACCENT = '#cb0086';
-const ACCENT_LIGHT = '#E040A0';
+const ACCENT = '#ff0000';
+const ACCENT_LIGHT = '#ff0000';
 
 const QUALITY_OPTIONS = [
   { label: '10%', value: 0.1 },
