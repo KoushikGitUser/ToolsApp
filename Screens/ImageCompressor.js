@@ -671,7 +671,7 @@ const createStyles = (colors, accent) => StyleSheet.create({
     fontWeight: '700',
   },
   btnDisabled: {
-    opacity: 0.6,
+    backgroundColor:"#ad6e00"
   },
 
   // Result Section

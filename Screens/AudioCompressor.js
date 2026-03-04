@@ -424,7 +424,6 @@ const AudioCompressor = ({ navigation }) => {
             <TouchableOpacity
               style={[styles.compressBtn, loading && styles.btnDisabled]}
               onPress={compressAudio}
-              activeOpacity={0.8}
               disabled={loading}
             >
               {loading ? (
@@ -432,7 +431,7 @@ const AudioCompressor = ({ navigation }) => {
               ) : (
                 <AntDesign name="compress" size={24} color="white" />
               )}
-              <Text style={styles.compressBtnText}>
+              <Text style={[styles.compressBtnText,loading && styles.textDisabled]}>
                 {loading ? 'Compressing...' : 'Compress Audio'}
               </Text>
             </TouchableOpacity>
@@ -780,9 +779,11 @@ const createStyles = (colors, accent) => StyleSheet.create({
     fontWeight: '700',
   },
   btnDisabled: {
-    opacity: 0.6,
+    backgroundColor: '#8f1010',
   },
-
+textDisabled:{
+  color:"lightgrey"
+},
   // Result Section
   resultSection: {
     marginTop: 20,

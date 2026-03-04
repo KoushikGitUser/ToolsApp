@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -11,7 +11,6 @@ import {
   ActivityIndicator,
   Dimensions,
   Modal,
-  PanResponder,
   Pressable,
   Animated,
   TextInput,
@@ -19,9 +18,10 @@ import {
   TouchableWithoutFeedback,
   Keyboard,
 } from 'react-native';
-
+import ImageViewing from 'react-native-image-viewing';
 import { Ionicons, FontAwesome5, MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import Slider from '@react-native-community/slider';
+import { Image as CompressorImage } from 'react-native-compressor';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { triggerToast } from '../Services/toast';
 import * as ImagePicker from 'expo-image-picker';
@@ -42,6 +42,7 @@ const THUMB_SIZE = 200;
 const ImageToPdf = ({ navigation }) => {
   const [images, setImages] = useState([]);
   const [pdfUri, setPdfUri] = useState(null);
+  const [pdfSize, setPdfSize] = useState(null);
   const [loading, setLoading] = useState(false);
   const [previewIndex, setPreviewIndex] = useState(null);
   const [editIndex, setEditIndex] = useState(null);
@@ -100,25 +101,6 @@ const ImageToPdf = ({ navigation }) => {
   const accent = isDark ? ACCENT : ACCENT_LIGHT;
   const styles = useMemo(() => createStyles(colors, accent, isDark), [colors, accent, isDark]);
 
-  // Pan responder for swipe gestures - Preview Modal
-  const previewPanResponder = useRef(
-    PanResponder.create({
-      onMoveShouldSetPanResponder: (_, gestureState) => {
-        return Math.abs(gestureState.dx) > 20;
-      },
-      onPanResponderRelease: (_, gestureState) => {
-        if (gestureState.dx > 50 && previewIndex > 0) {
-          // Swipe right - previous image
-          setPreviewIndex(previewIndex - 1);
-        } else if (gestureState.dx < -50 && previewIndex < images.length - 1) {
-          // Swipe left - next image
-          setPreviewIndex(previewIndex + 1);
-        }
-      },
-    })
-  ).current;
-
-
   const pickImages = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
@@ -134,7 +116,7 @@ const ImageToPdf = ({ navigation }) => {
 
     if (!result.canceled && result.assets?.length > 0) {
       const MAX_SIZE = 12 * 1024 * 1024;
-      const MAX_COUNT = 15;
+      const MAX_COUNT = 50;
       const remaining = MAX_COUNT - images.length;
 
       const oversized = result.assets.filter(a => a.fileSize && a.fileSize > MAX_SIZE);
@@ -155,7 +137,7 @@ const ImageToPdf = ({ navigation }) => {
           3500
         );
       } else if (countExceeded > 0) {
-        triggerToast('Limit Reached', `Max 15 images allowed. Only ${toAdd.length} added.`, 'alert', 3000);
+        triggerToast('Limit Reached', `Max 50 images allowed. Only ${toAdd.length} added.`, 'alert', 3000);
       }
     }
   };
@@ -288,8 +270,8 @@ const ImageToPdf = ({ navigation }) => {
         if (contrast !== 1 || activeFilter) {
           if (imageViewRef.current) {
             const capturedUri = await captureRef(imageViewRef, {
-              format: 'png',
-              quality: 1,
+              format: 'jpg',
+              quality: 0.9,
               result: 'tmpfile',
             });
             currentImageResult = capturedUri;
@@ -298,10 +280,10 @@ const ImageToPdf = ({ navigation }) => {
 
         // Apply rotation to current image
         if (rotation !== 0) {
-          const manipulated = await ImageManipulator.manipulate(
+          const manipulated = await ImageManipulator.manipulateAsync(
             currentImageResult,
             [{ rotate: rotation }],
-            { compress: 1, format: ImageManipulator.SaveFormat.PNG }
+            { compress: 0.9, format: ImageManipulator.SaveFormat.JPEG }
           );
           currentImageResult = manipulated.uri;
         }
@@ -313,10 +295,10 @@ const ImageToPdf = ({ navigation }) => {
         if (rotation !== 0) {
           for (let i = 0; i < updatedImages.length; i++) {
             if (i !== editIndex) {
-              const manipulated = await ImageManipulator.manipulate(
+              const manipulated = await ImageManipulator.manipulateAsync(
                 updatedImages[i].uri,
                 [{ rotate: rotation }],
-                { compress: 1, format: ImageManipulator.SaveFormat.PNG }
+                { compress: 0.9, format: ImageManipulator.SaveFormat.JPEG }
               );
               updatedImages[i] = { ...updatedImages[i], uri: manipulated.uri };
             }
@@ -331,8 +313,8 @@ const ImageToPdf = ({ navigation }) => {
         if (contrast !== 1 || activeFilter) {
           if (imageViewRef.current) {
             const capturedUri = await captureRef(imageViewRef, {
-              format: 'png',
-              quality: 1,
+              format: 'jpg',
+              quality: 0.9,
               result: 'tmpfile',
             });
             result = capturedUri;
@@ -340,10 +322,10 @@ const ImageToPdf = ({ navigation }) => {
         }
 
         if (rotation !== 0) {
-          const manipulated = await ImageManipulator.manipulate(
+          const manipulated = await ImageManipulator.manipulateAsync(
             result,
             [{ rotate: rotation }],
-            { compress: 1, format: ImageManipulator.SaveFormat.PNG }
+            { compress: 0.9, format: ImageManipulator.SaveFormat.JPEG }
           );
           result = manipulated.uri;
         }
@@ -481,30 +463,34 @@ const ImageToPdf = ({ navigation }) => {
           setCompressionProgress({ current: i + 1, total: images.length });
 
           // Compress based on selected quality
-          let resizeWidth, compressQuality;
+          let maxWidth, quality;
           if (compressionQuality === 'high') {
-            resizeWidth = 1200; // High quality for text/documents
-            compressQuality = 0.8; // 80% quality
+            maxWidth = 1200; // High quality for text/documents
+            quality = 0.8; // 80% quality
           } else if (compressionQuality === 'balanced') {
-            resizeWidth = 700; // Balanced for general use
-            compressQuality = 0.5; // 50% quality
+            maxWidth = 700; // Balanced for general use
+            quality = 0.5; // 50% quality
           } else { // 'small'
-            resizeWidth = 500; // Small file size
-            compressQuality = 0.3; // 30% quality
+            maxWidth = 500; // Small file size
+            quality = 0.3; // 30% quality
           }
 
-          const compressedImage = await ImageManipulator.manipulateAsync(
+          const compressedUri = await CompressorImage.compress(
             images[i].uri,
-            [{ resize: { width: resizeWidth } }],
-            { compress: compressQuality, format: ImageManipulator.SaveFormat.JPEG }
+            {
+              compressionMethod: 'manual',
+              maxWidth: maxWidth,
+              quality: quality,
+              output: 'jpg',
+            }
           );
 
-          const base64 = await getBase64(compressedImage.uri);
+          const base64 = await getBase64(compressedUri);
           base64Images.push(`data:image/jpeg;base64,${base64}`);
 
           // Clean up temporary file to free memory
           try {
-            const tempFile = new File(compressedImage.uri);
+            const tempFile = new File(compressedUri);
             if (tempFile.exists) {
               tempFile.delete();
             }
@@ -515,17 +501,21 @@ const ImageToPdf = ({ navigation }) => {
           console.log(`Error compressing image ${i}:`, imgError);
           // If compression fails, compress original with very aggressive settings
           try {
-            const fallbackCompressed = await ImageManipulator.manipulateAsync(
+            const fallbackCompressedUri = await CompressorImage.compress(
               images[i].uri,
-              [{ resize: { width: 400 } }],
-              { compress: 0.5, format: ImageManipulator.SaveFormat.JPEG }
+              {
+                compressionMethod: 'manual',
+                maxWidth: 400,
+                quality: 0.5,
+                output: 'jpg',
+              }
             );
-            const base64 = await getBase64(fallbackCompressed.uri);
+            const base64 = await getBase64(fallbackCompressedUri);
             base64Images.push(`data:image/jpeg;base64,${base64}`);
 
             // Clean up
             try {
-              const tempFile = new File(fallbackCompressed.uri);
+              const tempFile = new File(fallbackCompressedUri);
               if (tempFile.exists) tempFile.delete();
             } catch {}
           } catch (fallbackError) {
@@ -602,17 +592,33 @@ const ImageToPdf = ({ navigation }) => {
       console.log('PDF created successfully at:', uri);
 
       // Rename PDF if custom name is set
+      let finalUri = uri;
       if (pdfName && pdfName.trim() !== '') {
         const customFileName = `${pdfName.trim()}.pdf`;
         const customFile = new File(Paths.cache, customFileName);
+
+        // Delete existing file if it exists
+        if (customFile.exists) {
+          customFile.delete();
+        }
+
         const sourceFile = new File(uri);
         sourceFile.copy(customFile);
-        setPdfUri(customFile.uri);
+        finalUri = customFile.uri;
         console.log('PDF renamed to:', customFile.uri);
-      } else {
-        setPdfUri(uri);
       }
 
+      // Get PDF file size
+      try {
+        const pdfFile = new File(finalUri);
+        if (pdfFile.exists) {
+          setPdfSize(pdfFile.size);
+        }
+      } catch (e) {
+        console.log('Error getting PDF size:', e);
+      }
+
+      setPdfUri(finalUri);
       console.log('PDF conversion completed successfully');
     } catch (error) {
       console.log('PDF conversion error:', error);
@@ -630,21 +636,21 @@ const ImageToPdf = ({ navigation }) => {
     });
   };
 
+  const formatSize = (bytes) => {
+    if (!bytes) return '';
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+  };
+
   const resetToPdfGeneration = () => {
     setPdfUri(null);
+    setPdfSize(null);
   };
 
   const showPdf = () => {
     if (!pdfUri) return;
     setPdfViewerVisible(true);
-  };
-
-  const navigatePreview = (direction) => {
-    if (direction === 'prev' && previewIndex > 0) {
-      setPreviewIndex(previewIndex - 1);
-    } else if (direction === 'next' && previewIndex < images.length - 1) {
-      setPreviewIndex(previewIndex + 1);
-    }
   };
 
   return (
@@ -778,15 +784,15 @@ const ImageToPdf = ({ navigation }) => {
         {/* Pick Images Button */}
         {!pdfUri && !isSorting && (
           <TouchableOpacity
-            style={[styles.pickBtn, images.length >= 15 && styles.pickBtnDisabled]}
+            style={[styles.pickBtn, images.length >= 50 && styles.pickBtnDisabled]}
             onPress={pickImages}
             activeOpacity={0.8}
-            disabled={images.length >= 15}
+            disabled={images.length >= 50}
           >
 
             <Ionicons name="images" size={24} color={colors.textPrimary} />
             <Text style={styles.pickBtnText}>
-              {images.length === 0 ? 'Pick Images' : images.length >= 15 ? 'Max Images Reached' : 'Add More Images'}
+              {images.length === 0 ? 'Pick Images' : images.length >= 50 ? 'Max Images Reached' : 'Add More Images'}
             </Text>
           </TouchableOpacity>
         )}
@@ -857,7 +863,11 @@ const ImageToPdf = ({ navigation }) => {
               <Ionicons name="pencil" size={20} color={colors.textPrimary} />
               <Text style={styles.pageSizeBtnLabel}>Rename PDF</Text>
               <View style={styles.pageSizeBtnRight}>
-                <Text style={styles.pageSizeBtnValue}>{pdfName || 'Default'}</Text>
+                <Text style={styles.pageSizeBtnValue}>
+                  {pdfName
+                    ? (pdfName.length > 30 ? pdfName.substring(0, 30) + '...' : pdfName)
+                    : 'Default'}
+                </Text>
                 <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
               </View>
             </TouchableOpacity>
@@ -902,9 +912,16 @@ const ImageToPdf = ({ navigation }) => {
         {/* Success / Result Section */}
         {pdfUri && (
           <View style={styles.resultSection}>
-            <View style={styles.successBadge}>
+            <View style={[styles.successBadge,{marginBottom:12}]}>
               <Ionicons name="checkmark-circle" size={28} color={accent} />
-              <Text style={styles.successText}>PDF Created Successfully!</Text>
+              <View>
+                <Text style={styles.successText}>PDF Created Successfully!</Text>
+              </View>
+            </View>
+            <View style={styles.successBadge}>
+              <View>
+                <Text style={styles.successText}>Created PDF Size: {formatSize(pdfSize)}</Text>
+              </View>
             </View>
 
             <TouchableOpacity style={styles.shareBtn} onPress={sharePdf} activeOpacity={0.8}>
@@ -925,54 +942,31 @@ const ImageToPdf = ({ navigation }) => {
         )}
       </ScrollView>
 
-      {/* Full Image Preview Modal */}
-      <Modal
+      {/* Full Image Preview with Zoom */}
+      <ImageViewing
+        images={images.map(img => ({ uri: img.uri }))}
+        imageIndex={previewIndex !== null ? previewIndex : 0}
         visible={previewIndex !== null}
-        transparent
-        animationType="fade"
         onRequestClose={() => setPreviewIndex(null)}
-      >
-        <View style={styles.modalOverlay}>
-          <TouchableOpacity
-            style={styles.modalCloseBtn}
-            onPress={() => setPreviewIndex(null)}
-          >
-            <Ionicons name="close" size={28} color="#fff" />
-          </TouchableOpacity>
-
-          {/* Navigation Arrows */}
-          {previewIndex > 0 && (
+        presentationStyle="overFullScreen"
+        HeaderComponent={() => (
+          <View style={styles.imageViewerHeader}>
             <TouchableOpacity
-              style={[styles.navArrow, styles.navArrowLeft]}
-              onPress={() => navigatePreview('prev')}
+              style={styles.imageViewerCloseBtn}
+              onPress={() => setPreviewIndex(null)}
             >
-              <Ionicons name="chevron-back" size={32} color="#fff" />
+              <Ionicons name="close" size={28} color="#000000" />
             </TouchableOpacity>
-          )}
-
-          {previewIndex < images.length - 1 && (
-            <TouchableOpacity
-              style={[styles.navArrow, styles.navArrowRight]}
-              onPress={() => navigatePreview('next')}
-            >
-              <Ionicons name="chevron-forward" size={32} color="#fff" />
-            </TouchableOpacity>
-          )}
-
-          {previewIndex !== null && (
-            <View style={styles.previewImageWrapper} {...previewPanResponder.panHandlers}>
-              <Image
-                source={{ uri: images[previewIndex]?.uri }}
-                style={styles.previewImage}
-                resizeMode="contain"
-              />
-              <Text style={styles.previewText}>
-                {previewIndex + 1} / {images.length}
-              </Text>
-            </View>
-          )}
-        </View>
-      </Modal>
+          </View>
+        )}
+        FooterComponent={({ imageIndex }) => (
+          <View style={styles.imageViewerFooter}>
+            <Text style={styles.imageViewerCounter}>
+              {imageIndex + 1} / {images.length}
+            </Text>
+          </View>
+        )}
+      />
 
       {/* Edit Modal */}
       <Modal
@@ -1832,6 +1826,13 @@ const createStyles = (colors, accent, isDark) => StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
   },
+  successSize: {
+    color: accent,
+    fontSize: 13,
+    fontWeight: '600',
+    marginTop: 2,
+    textAlign: 'center',
+  },
   shareBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -2371,6 +2372,37 @@ const createStyles = (colors, accent, isDark) => StyleSheet.create({
     marginTop: 12,
     fontSize: 16,
     color: colors.textPrimary,
+  },
+
+  // ImageViewing Header
+  imageViewerHeader: {
+    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight + 10 : 50,
+    paddingHorizontal: 20,
+    paddingBottom: 10,
+  },
+  imageViewerCloseBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgb(255, 255, 255)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation:10
+  },
+
+  // ImageViewing Footer
+  imageViewerFooter: {
+    alignItems: 'center',
+    paddingBottom: Platform.OS === 'android' ? 70 : 70,
+  },
+  imageViewerCounter: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
   },
 });
 

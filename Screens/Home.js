@@ -197,12 +197,24 @@ const Home = ({ navigation }) => {
   const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
 
   // Animation for theme toggle
-  const themeToggleAnimation = useRef(new Animated.Value(isDark ? 1 : 0)).current;
+  const themeToggleAnimation = useRef(new Animated.Value(0)).current;
+  const hasAnimatedOnce = useRef(false);
 
-  // Sync animation with isDark state (for when theme loads from AsyncStorage)
+  // Sync animation value whenever isDark changes
   useEffect(() => {
-    themeToggleAnimation.setValue(isDark ? 1 : 0);
-  }, [isDark, themeToggleAnimation]);
+    if (!hasAnimatedOnce.current) {
+      // First load - set immediately without animation
+      themeToggleAnimation.setValue(isDark ? 1 : 0);
+      hasAnimatedOnce.current = true;
+    } else {
+      // Subsequent changes - animate smoothly
+      Animated.timing(themeToggleAnimation, {
+        toValue: isDark ? 1 : 0,
+        duration: 200,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [isDark]);
 
   return (
     <View style={styles.container}>
@@ -212,15 +224,7 @@ const Home = ({ navigation }) => {
         <Text style={styles.heading}>Tools</Text>
         <View style={styles.headerRight}>
           <TouchableOpacity
-            onPress={() => {
-              toggleTheme();
-              // Animate toggle
-              Animated.timing(themeToggleAnimation, {
-                toValue: !isDark ? 1 : 0,
-                duration: 200,
-                useNativeDriver: true,
-              }).start();
-            }}
+            onPress={toggleTheme}
             style={styles.themeToggle}
             activeOpacity={0.7}
           >
