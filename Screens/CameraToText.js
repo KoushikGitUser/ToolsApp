@@ -330,6 +330,7 @@ const CameraToText = ({ navigation }) => {
   };
 
   const speakFromWord = async (wordIndex) => {
+    setIsVoiceLoading(true)
     if (!extractedText) return;
 
     const words = extractedText.split(/\s+/);
@@ -392,7 +393,7 @@ const CameraToText = ({ navigation }) => {
       stopSpeaking();
     }
   };
-
+ 
   if (isCameraActive && device) {
     return (
       <View style={styles.cameraContainer}>

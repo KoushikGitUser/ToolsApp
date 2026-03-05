@@ -46,6 +46,7 @@ const ImageToPdf = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
   const [previewIndex, setPreviewIndex] = useState(null);
   const [editIndex, setEditIndex] = useState(null);
+  const [isAddingImages, setIsAddingImages] = useState(false);
 
   // Edit state
   const [contrast, setContrast] = useState(1);
@@ -102,43 +103,66 @@ const ImageToPdf = ({ navigation }) => {
   const styles = useMemo(() => createStyles(colors, accent, isDark), [colors, accent, isDark]);
 
   const pickImages = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      triggerToast('Permission needed', 'Please grant gallery access to pick images.', 'alert', 3000);
-      return;
-    }
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      allowsMultipleSelection: true,
-      quality: 1,
-    });
-
-    if (!result.canceled && result.assets?.length > 0) {
-      const MAX_SIZE = 12 * 1024 * 1024;
-      const MAX_COUNT = 50;
-      const remaining = MAX_COUNT - images.length;
-
-      const oversized = result.assets.filter(a => a.fileSize && a.fileSize > MAX_SIZE);
-      const valid = result.assets.filter(a => !a.fileSize || a.fileSize <= MAX_SIZE);
-      const toAdd = valid.slice(0, remaining);
-      const countExceeded = valid.length - toAdd.length;
-
-      if (toAdd.length > 0) {
-        setImages((prev) => [...prev, ...toAdd]);
-        setPdfUri(null);
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        triggerToast('Permission needed', 'Please grant gallery access to pick images.', 'alert', 3000);
+        return;
       }
 
-      if (oversized.length > 0) {
-        triggerToast(
-          `${oversized.length} image${oversized.length > 1 ? 's' : ''} skipped`,
-          'Each image must be 12 MB or less.',
-          'alert',
-          3500
-        );
-      } else if (countExceeded > 0) {
-        triggerToast('Limit Reached', `Max 50 images allowed. Only ${toAdd.length} added.`, 'alert', 3000);
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsMultipleSelection: true,
+        quality: 1,
+      });
+
+      // Show loader immediately after picker closes
+      if (!result.canceled && result.assets?.length > 0) {
+        // Set loading state first
+        setIsAddingImages(true);
+
+        // Force a render cycle before processing
+        await new Promise(resolve => {
+          requestAnimationFrame(() => {
+            requestAnimationFrame(resolve);
+          });
+        });
+
+        try {
+          const MAX_SIZE = 12 * 1024 * 1024;
+          const MAX_COUNT = 50;
+          const remaining = MAX_COUNT - images.length;
+
+          const oversized = result.assets.filter(a => a.fileSize && a.fileSize > MAX_SIZE);
+          const valid = result.assets.filter(a => !a.fileSize || a.fileSize <= MAX_SIZE);
+          const toAdd = valid.slice(0, remaining);
+          const countExceeded = valid.length - toAdd.length;
+
+          if (toAdd.length > 0) {
+            setImages((prev) => [...prev, ...toAdd]);
+            setPdfUri(null);
+          }
+
+          if (oversized.length > 0) {
+            triggerToast(
+              `${oversized.length} image${oversized.length > 1 ? 's' : ''} skipped`,
+              'Each image must be 12 MB or less.',
+              'alert',
+              3500
+            );
+          } else if (countExceeded > 0) {
+            triggerToast('Limit Reached', `Max 50 images allowed. Only ${toAdd.length} added.`, 'alert', 3000);
+          }
+
+          setIsAddingImages(false);
+        } catch (error) {
+          console.log('Error processing images:', error);
+          setIsAddingImages(false);
+        }
       }
+    } catch (error) {
+      console.log('Error picking images:', error);
+      setIsAddingImages(false);
     }
   };
 
@@ -784,16 +808,24 @@ const ImageToPdf = ({ navigation }) => {
         {/* Pick Images Button */}
         {!pdfUri && !isSorting && (
           <TouchableOpacity
-            style={[styles.pickBtn, images.length >= 50 && styles.pickBtnDisabled]}
+            style={[styles.pickBtn, (images.length >= 50 || isAddingImages) && styles.pickBtnDisabled]}
             onPress={pickImages}
             activeOpacity={0.8}
-            disabled={images.length >= 50}
+            disabled={images.length >= 50 || isAddingImages}
           >
-
-            <Ionicons name="images" size={24} color={colors.textPrimary} />
-            <Text style={styles.pickBtnText}>
-              {images.length === 0 ? 'Pick Images' : images.length >= 50 ? 'Max Images Reached' : 'Add More Images'}
-            </Text>
+            {isAddingImages ? (
+              <>
+                <ActivityIndicator color={colors.textPrimary} size="small" />
+                <Text style={styles.pickBtnText}>Adding Images...</Text>
+              </>
+            ) : (
+              <>
+                <Ionicons name="images" size={24} color={colors.textPrimary} />
+                <Text style={styles.pickBtnText}>
+                  {images.length === 0 ? 'Pick Images' : images.length >= 50 ? 'Max Images Reached' : 'Add More Images'}
+                </Text>
+              </>
+            )}
           </TouchableOpacity>
         )}
 
@@ -1286,7 +1318,7 @@ const ImageToPdf = ({ navigation }) => {
           <BlurView blurType={colors.blurType} blurAmount={10} style={StyleSheet.absoluteFillObject} />
           <View style={styles.compressionModalBox}>
             <ActivityIndicator size="large" color={accent} />
-            <Text style={styles.compressionModalTitle}>Compressing Images</Text>
+            <Text style={styles.compressionModalTitle}>Processing Images</Text>
             <Text style={styles.compressionModalText}>
               {compressionProgress.current} of {compressionProgress.total}
             </Text>
