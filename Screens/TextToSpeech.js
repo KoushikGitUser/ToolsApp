@@ -63,6 +63,7 @@ const TextToSpeech = ({ navigation }) => {
   };
 
   const speakFromWord = async (wordIndex) => {
+    setIsVoiceLoading(true)
     if (!inputText) return;
 
     const words = inputText.split(/\s+/);

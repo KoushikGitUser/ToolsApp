@@ -163,7 +163,7 @@ const FEATURES = [
     icon: <FontAwesome6 name="volume-high" size={20} color="#00f2ff" />,
     accent: '#00f2ff',
     title: 'Text To Speech',
-    desc: 'Convert any text into natural-sounding speech with customizable voice settings and playback controls.',
+    desc: 'Convert any text into natural-sounding speech.',
   },
   {
     icon: <Ionicons name="qr-code" size={20} color="#6B8E23" />,
