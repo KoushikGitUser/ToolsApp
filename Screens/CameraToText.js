@@ -346,7 +346,7 @@ const CameraToText = ({ navigation }) => {
     // Set state after stop completes
     setIsSpeaking(true);
     setCurrentWordIndex(wordIndex);
-
+ 
     Speech.speak(textToSpeak, {
       onStart: () => {
       setIsVoiceLoading(false);  // Stop loader when voice actually starts

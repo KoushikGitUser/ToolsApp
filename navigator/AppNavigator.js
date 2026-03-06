@@ -8,6 +8,7 @@ import ImageCompressor from '../Screens/ImageCompressor';
 import ImageFormatConverter from '../Screens/ImageFormatConverter';
 import VideoCompressor from '../Screens/VideoCompressor';
 import AudioCompressor from '../Screens/AudioCompressor';
+import AudioTrimmer from '../Screens/AudioTrimmer';
 import CameraToText from '../Screens/CameraToText';
 import TextToSpeech from '../Screens/TextToSpeech';
 import QRCodeTools from '../Screens/QRCodeTools';
@@ -30,6 +31,7 @@ const AppNavigator = () => {
       <Stack.Screen name="ImageCompressor" component={ImageCompressor} />
       <Stack.Screen name="VideoCompressor" component={VideoCompressor} />
       <Stack.Screen name="AudioCompressor" component={AudioCompressor} />
+      <Stack.Screen name="AudioTrimmer" component={AudioTrimmer} />
       <Stack.Screen name="ImageFormatConverter" component={ImageFormatConverter} />
       <Stack.Screen name="CameraToText" component={CameraToText} />
       <Stack.Screen name="TextToSpeech" component={TextToSpeech} />

@@ -132,6 +132,19 @@ const CARDS = [
     accent: '#009688',
     screen: 'FullBlur',
   },
+  {
+    title: 'Audio Trimmer',
+    wideIcon: true,
+    iconComponent: (color) => (
+      <>
+        <Ionicons name="musical-notes" size={24} color={color} />
+        <Feather name="repeat" size={19} color={color} />
+        <MaterialCommunityIcons name="content-cut" size={24} color={color} />
+      </>
+    ),
+    accent: '#FF0000',
+    screen: 'AudioTrimmer',
+  },
 ];
 
 const FEATURES = [
@@ -188,6 +201,12 @@ const FEATURES = [
     accent: '#009688',
     title: 'Full Blur',
     desc: 'Apply smooth blur effects to any image with adjustable intensity levels and save at original resolution.',
+  },
+  {
+    icon: <MaterialCommunityIcons name="content-cut" size={20} color="#FF0000" />,
+    accent: '#FF0000',
+    title: 'Audio Trimmer',
+    desc: 'Trim and cut audio files precisely with an easy-to-use interface and waveform visualization.',
   },
 ];
 
