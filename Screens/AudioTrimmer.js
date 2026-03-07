@@ -9,9 +9,16 @@ import {
   ScrollView,
   ActivityIndicator,
   Dimensions,
-  PanResponder, 
+  PanResponder,
+  Modal,
+  TextInput,
+  KeyboardAvoidingView,
+  TouchableWithoutFeedback,
+  Keyboard,
+  Pressable,
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { BlurView } from '@react-native-community/blur';
 import { triggerToast } from '../Services/toast';
 import * as DocumentPicker from 'expo-document-picker';
 import * as Sharing from 'expo-sharing';
@@ -37,14 +44,17 @@ const AudioTrimmer = ({ navigation }) => {
   const [endTime, setEndTime] = useState(100);
   const [duration, setDuration] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [trimmedSize, setTrimmedSize] = useState(null);
-  const [originalSize, setOriginalSize] = useState(null);
   const [waveformHeights, setWaveformHeights] = useState([]);
   const [isAdjusting, setIsAdjusting] = useState(false); // Track if user is adjusting trim
+  const [audioName, setAudioName] = useState(''); // Audio name
+  const [tempAudioName, setTempAudioName] = useState(''); // Temp name for modal input
+  const [renameModalVisible, setRenameModalVisible] = useState(false); // Rename modal
+  const [audioFormat, setAudioFormat] = useState('m4a'); // Audio format (m4a or mp3)
+  const [formatModalVisible, setFormatModalVisible] = useState(false); // Format modal
 
   const { colors, isDark } = useTheme();
   const accent = isDark ? ACCENT : ACCENT_LIGHT;
-  const styles = useMemo(() => createStyles(colors, accent), [colors, accent]);
+  const styles = useMemo(() => createStyles(colors, accent, isDark), [colors, accent, isDark]);
 
   const player = useAudioPlayer(null);
   const status = useAudioPlayerStatus(player);
@@ -96,14 +106,6 @@ const AudioTrimmer = ({ navigation }) => {
       setEndTime(100);
       setDuration(0);
       setIsPlaying(false);
-
-      // Get file size
-      try {
-        const file = new File(asset.uri);
-        if (file.exists) setOriginalSize(file.size);
-      } catch {
-        setOriginalSize(asset.size || null);
-      }
 
       // Load audio for playback
       try {
@@ -179,47 +181,65 @@ const AudioTrimmer = ({ navigation }) => {
 
       console.log('M4A file created:', audioUri);
 
-      // Convert m4a to mp3 using react-native-compressor
-      console.log('Converting m4a to mp3...');
-      const mp3TempResult = await CompressorAudio.compress(audioUri, {
-        bitrate: 192000, // High quality 192kbps
-      });
+      let finalUri = audioUri;
+      let finalFile = destFile;
+      let finalFileName = audioFileName;
 
-      console.log('MP3 temp file created:', mp3TempResult);
+      // Convert to MP3 if user selected MP3 format
+      if (audioFormat === 'mp3') {
+        console.log('Converting m4a to mp3...');
+        const mp3TempResult = await CompressorAudio.compress(audioUri, {
+          bitrate: 320000, // High quality 320kbps
+        });
 
-      // Rename the MP3 to our desired filename
-      const mp3FileName = `Trimmed_Audio_ToolsApp.mp3`;
-      const mp3Path = `${cacheDir}/${mp3FileName}`;
-      const mp3Uri = `file://${mp3Path}`;
+        console.log('MP3 temp file created:', mp3TempResult);
 
-      const mp3TempFile = new File(mp3TempResult);
-      const mp3FinalFile = new File(mp3Uri);
+        // Rename the MP3 to our desired filename
+        const mp3FileName = audioName ? `${audioName}.mp3` : `Trimmed_Audio_ToolsApp.mp3`;
+        const mp3Path = `${cacheDir}/${mp3FileName}`;
+        const mp3Uri = `file://${mp3Path}`;
 
-      // Delete existing file if present
-      if (mp3FinalFile.exists) {
-        mp3FinalFile.delete();
-      }
+        const mp3TempFile = new File(mp3TempResult);
+        const mp3FinalFile = new File(mp3Uri);
 
-      // Copy to final name
-      mp3TempFile.copy(mp3FinalFile);
-
-      console.log('Final MP3 file created:', mp3Uri);
-
-      // Store the final MP3 file path
-      setTrimmedUri(mp3Uri);
-
-      // Get file size of the final MP3
-      try {
-        console.log('Checking MP3 file at:', mp3Uri);
-        console.log('MP3 file exists:', mp3FinalFile.exists);
-
+        // Delete existing file if present
         if (mp3FinalFile.exists) {
-          console.log('MP3 file size:', mp3FinalFile.size);
-          setTrimmedSize(mp3FinalFile.size);
+          mp3FinalFile.delete();
         }
-      } catch (e) {
-        console.log('Error getting MP3 file size:', e);
+
+        // Copy to final name
+        mp3TempFile.copy(mp3FinalFile);
+
+        console.log('Final MP3 file created:', mp3Uri);
+
+        finalUri = mp3Uri;
+        finalFile = mp3FinalFile;
+        finalFileName = mp3FileName;
+      } else {
+        // Keep as M4A - just rename if custom name provided
+        if (audioName) {
+          const m4aFileName = `${audioName}.m4a`;
+          const m4aPath = `${cacheDir}/${m4aFileName}`;
+          const m4aUri = `file://${m4aPath}`;
+
+          const m4aFinalFile = new File(m4aUri);
+
+          // Delete existing file if present
+          if (m4aFinalFile.exists) {
+            m4aFinalFile.delete();
+          }
+
+          // Copy to final name
+          destFile.copy(m4aFinalFile);
+
+          finalUri = m4aUri;
+          finalFile = m4aFinalFile;
+          finalFileName = m4aFileName;
+        }
       }
+
+      // Store the final file path
+      setTrimmedUri(finalUri);
 
       triggerToast('Success', 'Audio trimmed successfully!', 'success', 2500);
     } catch (error) {
@@ -252,17 +272,11 @@ const AudioTrimmer = ({ navigation }) => {
   };
 
   const formatTime = (seconds) => {
-    if (!seconds || isNaN(seconds)) return '0:00';
+    if (!seconds || isNaN(seconds)) return '0:00.0';
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  const formatSize = (bytes) => {
-    if (!bytes) return '—';
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+    const ms = Math.floor((seconds % 1) * 10); // Get deciseconds (tenths of a second)
+    return `${mins}:${secs.toString().padStart(2, '0')}.${ms}`;
   };
 
   // Pan responder for start handle
@@ -290,6 +304,7 @@ const AudioTrimmer = ({ navigation }) => {
         },
         onPanResponderRelease: () => {
           setIsAdjusting(false);
+          player.seekTo(startTime);
         },
       }),
     [duration, endTime, status.playing, loading]
@@ -320,6 +335,7 @@ const AudioTrimmer = ({ navigation }) => {
         },
         onPanResponderRelease: () => {
           setIsAdjusting(false);
+          player.seekTo(startTime);
         },
       }),
     [duration, startTime, status.playing, loading]
@@ -443,25 +459,45 @@ const AudioTrimmer = ({ navigation }) => {
             {/* Waveform Container */}
             <View style={styles.waveformContainer}>
               {/* Waveform Background */}
-              <View style={styles.waveformBg}>
-                {/* Generate waveform bars */}
-                {waveformHeights.map((height, i) => {
-                  const barPosition = HANDLE_WIDTH + (i / 50) * WAVEFORM_WIDTH;
-                  const isInRange = barPosition >= startPosition && barPosition <= endPosition;
-                  return (
-                    <View
-                      key={i}
-                      style={[
-                        styles.waveformBar,
-                        {
-                          height,
-                          backgroundColor: isInRange ? accent + '80' : colors.border2,
-                        },
-                      ]}
-                    />
-                  );
-                })}
-              </View>
+              <TouchableWithoutFeedback
+                onPress={(evt) => {
+                  if (loading) return;
+
+                  // Get the touch position relative to the screen
+                  const touchX = evt.nativeEvent.pageX;
+
+                  // Calculate position relative to waveform (accounting for padding)
+                  const relativeX = touchX - 20 - HANDLE_WIDTH; // 20 is screen padding
+
+                  // Calculate the time position based on touch
+                  const seekPosition = Math.max(0, Math.min(relativeX / WAVEFORM_WIDTH, 1)) * duration;
+
+                  // Only seek if touch is within the trimmed range
+                  if (seekPosition >= startTime && seekPosition <= endTime) {
+                    player.seekTo(seekPosition);
+                  }
+                }}
+              >
+                <View style={styles.waveformBg}>
+                  {/* Generate waveform bars */}
+                  {waveformHeights.map((height, i) => {
+                    const barPosition = HANDLE_WIDTH + (i / 50) * WAVEFORM_WIDTH;
+                    const isInRange = barPosition >= startPosition && barPosition <= endPosition;
+                    return (
+                      <View
+                        key={i}
+                        style={[
+                          styles.waveformBar,
+                          {
+                            height,
+                            backgroundColor: isInRange ? accent + '80' : colors.border2,
+                          },
+                        ]}
+                      />
+                    );
+                  })}
+                </View>
+              </TouchableWithoutFeedback>
 
               {/* Progress Indicator */}
               {isPlaying && (
@@ -519,9 +555,10 @@ const AudioTrimmer = ({ navigation }) => {
                     style={styles.manualControlBtn}
                     onPress={() => {
                       if (status.playing) player.pause();
-                      const newStart = Math.max(0, startTime - 1);
-                      if (newStart < endTime - 1) {
+                      const newStart = Math.max(0, startTime - 0.1);
+                      if (newStart < endTime - 0.1) {
                         setStartTime(newStart);
+                        player.seekTo(newStart);
                       }
                     }}
                     activeOpacity={0.7}
@@ -536,8 +573,9 @@ const AudioTrimmer = ({ navigation }) => {
                     style={styles.manualControlBtn}
                     onPress={() => {
                       if (status.playing) player.pause();
-                      const newStart = Math.min(endTime - 1, startTime + 1);
+                      const newStart = Math.min(endTime - 0.1, startTime + 0.1);
                       setStartTime(newStart);
+                      player.seekTo(newStart);
                     }}
                     activeOpacity={0.7}
                     disabled={loading}
@@ -555,8 +593,9 @@ const AudioTrimmer = ({ navigation }) => {
                     style={styles.manualControlBtn}
                     onPress={() => {
                       if (status.playing) player.pause();
-                      const newEnd = Math.max(startTime + 1, endTime - 1);
+                      const newEnd = Math.max(startTime + 0.1, endTime - 0.1);
                       setEndTime(newEnd);
+                      player.seekTo(startTime);
                     }}
                     activeOpacity={0.7}
                     disabled={loading}
@@ -570,8 +609,9 @@ const AudioTrimmer = ({ navigation }) => {
                     style={styles.manualControlBtn}
                     onPress={() => {
                       if (status.playing) player.pause();
-                      const newEnd = Math.min(duration, endTime + 1);
+                      const newEnd = Math.min(duration, endTime + 0.1);
                       setEndTime(newEnd);
+                      player.seekTo(startTime);
                     }}
                     activeOpacity={0.7}
                     disabled={loading}
@@ -591,6 +631,45 @@ const AudioTrimmer = ({ navigation }) => {
             >
               <Ionicons name="musical-notes" size={22} color={colors.textPrimary} />
               <Text style={styles.pickBtnText}>Change Audio</Text>
+            </TouchableOpacity>
+
+            {/* Rename Button */}
+            <TouchableOpacity
+              style={styles.renameBtn}
+              onPress={() => {
+                setTempAudioName(audioName);
+                setRenameModalVisible(true);
+              }}
+              activeOpacity={0.7}
+              disabled={loading}
+            >
+              <Ionicons name="pencil" size={20} color={colors.textPrimary} />
+              <Text style={styles.renameBtnLabel}>Rename Audio</Text>
+              <View style={styles.renameBtnRight}>
+                <Text style={styles.renameBtnValue}>
+                  {audioName
+                    ? (audioName.length > 17 ? audioName.substring(0, 17) + '...' : audioName)
+                    : 'Default'}
+                </Text>
+                <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
+              </View>
+            </TouchableOpacity>
+
+            {/* Audio Format Button */}
+            <TouchableOpacity
+              style={styles.renameBtn}
+              onPress={() => setFormatModalVisible(true)}
+              activeOpacity={0.7}
+              disabled={loading}
+            >
+              <Ionicons name="musical-notes" size={20} color={colors.textPrimary} />
+              <Text style={styles.renameBtnLabel}>Audio Format</Text>
+              <View style={styles.renameBtnRight}>
+                <Text style={styles.renameBtnValue}>
+                  {audioFormat.toUpperCase()}
+                </Text>
+                <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
+              </View>
             </TouchableOpacity>
           </View>
         )}
@@ -621,18 +700,6 @@ const AudioTrimmer = ({ navigation }) => {
               <Text style={styles.successText}>Audio Trimmed!</Text>
             </View>
 
-            {/* Size Info */}
-            <View style={styles.sizeRow}>
-              <View style={styles.sizeCard}>
-                <Text style={styles.sizeLabel}>Original</Text>
-                <Text style={styles.sizeValue}>{formatSize(originalSize)}</Text>
-              </View>
-              <View style={styles.sizeCard}>
-                <Text style={styles.sizeLabel}>Trimmed</Text>
-                <Text style={[styles.sizeValue, { color: accent }]}>{formatSize(trimmedSize)}</Text>
-              </View>
-            </View>
-
             <TouchableOpacity style={styles.shareBtn} onPress={shareAudio} activeOpacity={0.8}>
               <Ionicons name="share" size={20} color={colors.shareBtnText} />
               <Text style={styles.shareBtnText}>Save / Share Audio</Text>
@@ -642,7 +709,6 @@ const AudioTrimmer = ({ navigation }) => {
               style={styles.retryBtn}
               onPress={() => {
                 setTrimmedUri(null);
-                setTrimmedSize(null);
                 if (duration > 0) {
                   setStartTime(0);
                   setEndTime(duration);
@@ -661,11 +727,128 @@ const AudioTrimmer = ({ navigation }) => {
           </View>
         )}
       </ScrollView>
+
+      {/* Rename Audio Modal */}
+      <Modal
+        visible={renameModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setRenameModalVisible(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={{ flex: 1 }}
+        >
+          <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+            <View style={styles.renameModalOverlay}>
+              <BlurView blurType={colors.blurType} blurAmount={10} style={StyleSheet.absoluteFillObject} />
+              <TouchableWithoutFeedback>
+                <View style={styles.renameModalBox}>
+                  <Text style={styles.renameModalTitle}>Rename Audio</Text>
+
+                  <TextInput
+                    style={styles.renameInput}
+                    placeholder="Enter audio name..."
+                    placeholderTextColor={colors.textSecondary}
+                    value={tempAudioName}
+                    onChangeText={setTempAudioName}
+                    autoFocus
+                  />
+
+                  <View style={styles.renameButtonsContainer}>
+                    <TouchableOpacity
+                      style={styles.renameCancelButton}
+                      onPress={() => {
+                        setRenameModalVisible(false);
+                        setTempAudioName(audioName);
+                      }}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={styles.renameCancelButtonText}>Cancel</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={styles.renameDoneButton}
+                      onPress={() => {
+                        if (tempAudioName.trim() === '') {
+                          setAudioName('');
+                          setRenameModalVisible(false);
+                          triggerToast('Success', 'Audio name reset to default', 'success', 2000);
+                          return;
+                        }
+                        setAudioName(tempAudioName);
+                        setRenameModalVisible(false);
+                        triggerToast('Success', 'Audio name updated', 'success', 2000);
+                      }}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={styles.renameDoneButtonText}>Done</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </TouchableWithoutFeedback>
+            </View>
+          </TouchableWithoutFeedback>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Format Selection Modal */}
+      <Modal
+        visible={formatModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setFormatModalVisible(false)}
+      >
+        <Pressable style={styles.formatModalOverlay} onPress={() => setFormatModalVisible(false)}>
+          <BlurView blurType={colors.blurType} blurAmount={10} style={StyleSheet.absoluteFillObject} />
+          <Pressable style={styles.formatModalContent} onPress={() => {}}>
+            <View style={styles.formatModalHeader}>
+              <Text style={styles.formatModalTitle}>Select Audio Format</Text>
+              <TouchableOpacity onPress={() => setFormatModalVisible(false)}>
+                <Ionicons name="close" size={24} color={colors.textPrimary} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.formatScrollView} showsVerticalScrollIndicator={false}>
+              {[
+                { key: 'm4a', label: 'M4A', desc: 'Best quality, no re-encoding', icon: 'file-music' },
+                { key: 'mp3', label: 'MP3', desc: 'Universal compatibility (320kbps)', icon: 'music-note' }
+              ].map((format, index) => (
+                <TouchableOpacity
+                  key={format.key}
+                  style={[
+                    styles.formatOption,
+                    audioFormat === format.key && styles.formatOptionActive,
+                    index === 1 && styles.formatOptionLast, {marginBottom:index == 1? 30:10}
+                  ]}
+                  onPress={() => {
+                    setAudioFormat(format.key);
+                    setFormatModalVisible(false);
+                    triggerToast('Audio Format', `Set to ${format.label}`, 'info', 2000);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.formatOptionLeft}>
+                    <MaterialCommunityIcons name={format.icon} size={24} color={colors.textPrimary} />
+                    <View>
+                      <Text style={styles.formatOptionText}>{format.label}</Text>
+                      <Text style={styles.formatOptionDesc}>{format.desc}</Text>
+                    </View>
+                  </View>
+                  {audioFormat === format.key && (
+                    <Ionicons name="checkmark-circle" size={24} color={accent} />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 };
 
-const createStyles = (colors, accent) => StyleSheet.create({
+const createStyles = (colors, accent, isDark) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.bg,
@@ -776,33 +959,6 @@ const createStyles = (colors, accent) => StyleSheet.create({
     color: colors.textTertiary,
     fontSize: 12,
     fontWeight: '600',
-  },
-
-  // Size Info
-  sizeRow: {
-    flexDirection: 'row',
-    gap: 10,
-    marginTop: 14,
-  },
-  sizeCard: {
-    flex: 1,
-    backgroundColor: colors.card,
-    borderRadius: 62,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  sizeLabel: {
-    color: colors.textSecondary,
-    fontSize: 11,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  sizeValue: {
-    color: colors.textPrimary,
-    fontSize: 15,
-    fontWeight: '800',
   },
 
   // Pick Button
@@ -1081,6 +1237,158 @@ const createStyles = (colors, accent) => StyleSheet.create({
     color: colors.textPrimary,
     fontSize: 16,
     fontWeight: '600',
+  },
+
+  // Rename Button
+  renameBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.card,
+    borderRadius: 56,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 16,
+    paddingVertical:20,
+    marginTop: 12,
+    gap: 12,
+  },
+  renameBtnLabel: {
+    flex: 1,
+    color: colors.textPrimary,
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  renameBtnRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  renameBtnValue: {
+    color: "red",
+    fontSize: 14,
+    fontWeight: '600',
+  },
+
+  // Rename Modal
+  renameModalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  renameModalBox: {
+    backgroundColor: colors.card,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    paddingHorizontal: 20,
+    paddingTop: 28,
+    paddingBottom: 50,
+  },
+  renameModalTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    marginBottom: 20,
+  },
+  renameInput: {
+    backgroundColor: isDark ? '#2a2a2a' : '#f5f5f5',
+    borderRadius: 16,
+    padding: 16,
+    fontSize: 16,
+    color: colors.textPrimary,
+    borderWidth: 1,
+    borderColor: isDark ? '#3a3a3a' : '#e0e0e0',
+    marginBottom: 20,
+  },
+  renameButtonsContainer: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  renameCancelButton: {
+    flex: 1,
+    backgroundColor: isDark ? '#2a2a2a' : '#f5f5f5',
+    paddingVertical: 16,
+    borderRadius: 60,
+    alignItems: 'center',
+  },
+  renameCancelButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.textPrimary,
+  },
+  renameDoneButton: {
+    flex: 1,
+    backgroundColor: accent,
+    paddingVertical: 16,
+    borderRadius: 60,
+    alignItems: 'center',
+  },
+  renameDoneButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#fff',
+  },
+
+  // Format Modal
+  formatModalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  formatModalContent: {
+    backgroundColor: colors.card,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    paddingBottom: 40,
+  },
+  formatModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: 24,
+    paddingBottom: 16,
+  },
+  formatModalTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: colors.textPrimary,
+  },
+  formatScrollView: {
+    maxHeight: 300,
+    paddingHorizontal: 20,
+  },
+  formatOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.bg,
+    borderRadius: 56,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  formatOptionActive: {
+    borderColor: accent,
+    backgroundColor: accent + '10',
+  },
+  formatOptionLast: {
+    marginBottom: 0,
+  },
+  formatOptionLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    flex: 1,
+  },
+  formatOptionText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    marginBottom: 2,
+  },
+  formatOptionDesc: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    lineHeight: 18,
   },
 });
 
