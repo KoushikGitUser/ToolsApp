@@ -8,15 +8,24 @@ import {
   Platform,
   Modal,
   Animated,
-} from 'react-native';
-import { useState, useMemo, useRef, useEffect } from 'react';
-import { MaterialIcons, MaterialCommunityIcons, AntDesign, FontAwesome5, FontAwesome6, Ionicons, Entypo, Feather } from '@expo/vector-icons';
-import { BlurView } from '@react-native-community/blur';
-import { useTheme } from '../Services/ThemeContext';
+} from "react-native";
+import { useState, useMemo, useRef, useEffect } from "react";
+import {
+  MaterialIcons,
+  MaterialCommunityIcons,
+  AntDesign,
+  FontAwesome5,
+  FontAwesome6,
+  Ionicons,
+  Entypo,
+  Feather,
+} from "@expo/vector-icons";
+import { BlurView } from "@react-native-community/blur";
+import { useTheme } from "../Services/ThemeContext";
 
 const CARDS = [
   {
-    title: 'Image to PDF',
+    title: "Image to PDF",
     wideIcon: true,
     iconComponent: (color) => (
       <>
@@ -25,11 +34,11 @@ const CARDS = [
         <FontAwesome5 name="file-pdf" size={24} color={color} />
       </>
     ),
-    accent: '#D50000',
-    screen: 'ImageToPdf',
+    accent: "#D50000",
+    screen: "ImageToPdf",
   },
-    {
-    title: 'Image Compressor',
+  {
+    title: "Image Compressor",
     wideIcon: true,
     iconComponent: (color) => (
       <>
@@ -38,11 +47,11 @@ const CARDS = [
         <AntDesign name="compress" size={24} color={color} />
       </>
     ),
-    accent: '#ffa200',
-    screen: 'ImageCompressor',
+    accent: "#ffa200",
+    screen: "ImageCompressor",
   },
-    {
-    title: 'Format Changer',
+  {
+    title: "Format Changer",
     wideIcon: true,
     iconComponent: (color) => (
       <>
@@ -51,11 +60,11 @@ const CARDS = [
         <MaterialCommunityIcons name="file-png-box" size={24} color={color} />
       </>
     ),
-    accent: '#2E86DE',
-    screen: 'ImageFormatConverter',
+    accent: "#2E86DE",
+    screen: "ImageFormatConverter",
   },
-    {
-    title: 'Camera to Text',
+  {
+    title: "Camera to Text",
     wideIcon: true,
     iconComponent: (color) => (
       <>
@@ -64,11 +73,11 @@ const CARDS = [
         <Feather name="file-text" size={24} color={color} />
       </>
     ),
-    accent: '#FF6F00',
-    screen: 'CameraToText',
+    accent: "#FF6F00",
+    screen: "CameraToText",
   },
   {
-    title: 'Audio Trimmer',
+    title: "Audio Trimmer",
     wideIcon: true,
     iconComponent: (color) => (
       <>
@@ -77,11 +86,11 @@ const CARDS = [
         <MaterialCommunityIcons name="content-cut" size={24} color={color} />
       </>
     ),
-    accent: '#9C27B0',
-    screen: 'AudioTrimmer',
+    accent: "#9C27B0",
+    screen: "AudioTrimmer",
   },
   {
-    title: 'Audio Compressor',
+    title: "Audio Compressor",
     wideIcon: true,
     iconComponent: (color) => (
       <>
@@ -90,11 +99,11 @@ const CARDS = [
         <AntDesign name="compress" size={24} color={color} />
       </>
     ),
-    accent: '#cb0086',
-    screen: 'AudioCompressor',
+    accent: "#cb0086",
+    screen: "AudioCompressor",
   },
-    {
-    title: 'Video Compressor',
+  {
+    title: "Video Compressor",
     wideIcon: true,
     iconComponent: (color) => (
       <>
@@ -103,11 +112,11 @@ const CARDS = [
         <AntDesign name="compress" size={24} color={color} />
       </>
     ),
-    accent: '#3f51c3',
-    screen: 'VideoCompressor',
+    accent: "#3f51c3",
+    screen: "VideoCompressor",
   },
-    {
-    title: 'QR Code Tools',
+  {
+    title: "QR Code Tools",
     wideIcon: true,
     iconComponent: (color) => (
       <>
@@ -116,11 +125,11 @@ const CARDS = [
         <Entypo name="tools" size={24} color={color} />
       </>
     ),
-    accent: '#6B8E23',
-    screen: 'QRCodeTools',
+    accent: "#6B8E23",
+    screen: "QRCodeTools",
   },
   {
-    title: 'Text To Speech',
+    title: "Text To Speech",
     wideIcon: true,
     iconComponent: (color) => (
       <>
@@ -129,11 +138,11 @@ const CARDS = [
         <FontAwesome6 name="volume-high" size={24} color={color} />
       </>
     ),
-    accent: '#00f2ff',
-    screen: 'TextToSpeech',
+    accent: "#00f2ff",
+    screen: "TextToSpeech",
   },
   {
-    title: 'Image Blur',
+    title: "Image Blur",
     wideIcon: true,
     iconComponent: (color) => (
       <>
@@ -142,71 +151,75 @@ const CARDS = [
         <MaterialIcons name="blur-on" size={24} color={color} />
       </>
     ),
-    accent: '#009688',
-    screen: 'FullBlur',
+    accent: "#009688",
+    screen: "FullBlur",
   },
 ];
 
 const FEATURES = [
   {
     icon: <FontAwesome5 name="file-pdf" size={18} color="#D50000" />,
-    accent: '#D50000',
-    title: 'Image to PDF',
-    desc: 'Convert one or multiple images into a single PDF document instantly.',
+    accent: "#D50000",
+    title: "Image to PDF",
+    desc: "Convert one or multiple images into a single PDF document instantly.",
   },
   {
     icon: <AntDesign name="compress" size={20} color="#ffa200" />,
-    accent: '#ffa200',
-    title: 'Image Compressor',
-    desc: 'Reduce image file size while maintaining quality with customisable compression settings.',
+    accent: "#ffa200",
+    title: "Image Compressor",
+    desc: "Reduce image file size while maintaining quality with customisable compression settings.",
   },
   {
-    icon: <MaterialCommunityIcons name="file-jpg-box" size={20} color="#2E86DE" />,
-    accent: '#2E86DE',
-    title: 'Format Changer',
-    desc: 'Convert images between JPG, PNG, and WEBP formats with a single tap.',
+    icon: (
+      <MaterialCommunityIcons name="file-jpg-box" size={20} color="#2E86DE" />
+    ),
+    accent: "#2E86DE",
+    title: "Format Changer",
+    desc: "Convert images between JPG, PNG, and WEBP formats with a single tap.",
   },
   {
     icon: <Entypo name="camera" size={20} color="#FF6F00" />,
-    accent: '#FF6F00',
-    title: 'Camera to Text',
-    desc: 'Capture images with your camera and extract text using OCR technology instantly.',
+    accent: "#FF6F00",
+    title: "Camera to Text",
+    desc: "Capture images with your camera and extract text using OCR technology instantly.",
   },
   {
-    icon: <MaterialCommunityIcons name="content-cut" size={20} color="#9C27B0" />,
-    accent: '#9C27B0',
-    title: 'Audio Trimmer',
-    desc: 'Trim and cut audio files precisely with an easy-to-use interface and waveform visualization.',
+    icon: (
+      <MaterialCommunityIcons name="content-cut" size={20} color="#9C27B0" />
+    ),
+    accent: "#9C27B0",
+    title: "Audio Trimmer",
+    desc: "Trim and cut audio files precisely with an easy-to-use interface and waveform visualization.",
   },
   {
     icon: <Ionicons name="musical-notes" size={20} color="#cb0086" />,
-    accent: '#cb0086',
-    title: 'Audio Compressor',
-    desc: 'Compress audio files with selectable bitrate presets to reduce file size efficiently.',
+    accent: "#cb0086",
+    title: "Audio Compressor",
+    desc: "Compress audio files with selectable bitrate presets to reduce file size efficiently.",
   },
   {
     icon: <Ionicons name="videocam" size={20} color="#3f51c3" />,
-    accent: '#3f51c3',
-    title: 'Video Compressor',
-    desc: 'Compress video files to save storage space with adjustable quality and resolution options.',
+    accent: "#3f51c3",
+    title: "Video Compressor",
+    desc: "Compress video files to save storage space with adjustable quality and resolution options.",
   },
   {
     icon: <Ionicons name="qr-code" size={20} color="#6B8E23" />,
-    accent: '#6B8E23',
-    title: 'QR Code Tools',
-    desc: 'Generate QR codes from text or URLs and scan QR codes with your camera.',
+    accent: "#6B8E23",
+    title: "QR Code Tools",
+    desc: "Generate QR codes from text or URLs and scan QR codes with your camera.",
   },
   {
     icon: <FontAwesome6 name="volume-high" size={20} color="#00f2ff" />,
-    accent: '#00f2ff',
-    title: 'Text To Speech',
-    desc: 'Convert any text into natural-sounding speech.',
+    accent: "#00f2ff",
+    title: "Text To Speech",
+    desc: "Convert any text into natural-sounding speech.",
   },
   {
     icon: <MaterialIcons name="blur-on" size={20} color="#009688" />,
-    accent: '#009688',
-    title: 'Image Blur',
-    desc: 'Apply smooth blur effects to any image with adjustable intensity levels and save at original resolution.',
+    accent: "#009688",
+    title: "Image Blur",
+    desc: "Apply smooth blur effects to any image with adjustable intensity levels and save at original resolution.",
   },
 ];
 
@@ -237,7 +250,6 @@ const Home = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.heading}>Tools</Text>
@@ -247,31 +259,42 @@ const Home = ({ navigation }) => {
             style={styles.themeToggle}
             activeOpacity={0.7}
           >
-            <View style={[styles.toggleSwitch, isDark && styles.toggleSwitchActive]}>
+            <View
+              style={[styles.toggleSwitch, isDark && styles.toggleSwitchActive]}
+            >
               <Animated.View
                 style={[
                   styles.toggleThumb,
                   {
-                    transform: [{
-                      translateX: themeToggleAnimation.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [0.5, 24.5]
-                      })
-                    }]
-                  }
+                    transform: [
+                      {
+                        translateX: themeToggleAnimation.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [0.5, 24.5],
+                        }),
+                      },
+                    ],
+                  },
                 ]}
               >
-                {isDark ? <AntDesign name="moon" size={22} color="#FFD700" /> : <Ionicons
-                  name='sunny'
-                  size={18}
-                  color='#FFA500'
-                />}
-                
+                {isDark ? (
+                  <AntDesign name="moon" size={22} color="#FFD700" />
+                ) : (
+                  <Ionicons name="sunny" size={18} color="#FFA500" />
+                )}
               </Animated.View>
             </View>
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => setInfoVisible(true)} style={styles.infoBtn} activeOpacity={0.7}>
-            <Ionicons name="information-circle-outline" size={28} color={colors.sectionSubtitle} />
+          <TouchableOpacity
+            onPress={() => setInfoVisible(true)}
+            style={styles.infoBtn}
+            activeOpacity={0.7}
+          >
+            <Ionicons
+              name="information-circle-outline"
+              size={28}
+              color={colors.sectionSubtitle}
+            />
           </TouchableOpacity>
         </View>
       </View>
@@ -280,14 +303,113 @@ const Home = ({ navigation }) => {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {CARDS.map((card, index) => (
-          <TouchableOpacity key={index} activeOpacity={0.85} onPress={() => navigation.navigate(card.screen)}>
-            <View style={[styles.card, { borderColor: card.accent + '80', backgroundColor: card.accent + '20' }]}>
-              <View style={[styles.iconContainer, card.wideIcon && styles.iconContainerWide, { backgroundColor: card.accent + '20' }]}>
+        {/* Section 1: Image Tools */}
+        {CARDS.slice(0, 4).map((card, index) => (
+          <TouchableOpacity
+            key={index}
+            activeOpacity={0.85}
+            onPress={() => navigation.navigate(card.screen)}
+          >
+            <View
+              style={[
+                styles.card,
+                {
+                  borderColor: card.accent + "80",
+                  backgroundColor: card.accent + "20",
+                },
+              ]}
+            >
+              <View
+                style={[
+                  styles.iconContainer,
+                  card.wideIcon && styles.iconContainerWide,
+                  { backgroundColor: card.accent + "20" },
+                ]}
+              >
                 {card.iconComponent(card.accent)}
               </View>
               <Text style={styles.cardTitle}>{card.title}</Text>
-              <MaterialIcons name="keyboard-arrow-right" size={28} color={isDark?"white":"black"} />
+              <MaterialIcons
+                name="keyboard-arrow-right"
+                size={28}
+                color={isDark ? "white" : "black"}
+              />
+            </View>
+          </TouchableOpacity>
+        ))}
+
+        {/* Separator */}
+        <View style={styles.separator} />
+
+        {/* Section 2: Audio & Video Tools */}
+        {CARDS.slice(4, 7).map((card, index) => (
+          <TouchableOpacity
+            key={index + 4}
+            activeOpacity={0.85}
+            onPress={() => navigation.navigate(card.screen)}
+          >
+            <View
+              style={[
+                styles.card,
+                {
+                  borderColor: card.accent + "80",
+                  backgroundColor: card.accent + "20",
+                },
+              ]}
+            >
+              <View
+                style={[
+                  styles.iconContainer,
+                  card.wideIcon && styles.iconContainerWide,
+                  { backgroundColor: card.accent + "20" },
+                ]}
+              >
+                {card.iconComponent(card.accent)}
+              </View>
+              <Text style={styles.cardTitle}>{card.title}</Text>
+              <MaterialIcons
+                name="keyboard-arrow-right"
+                size={28}
+                color={isDark ? "white" : "black"}
+              />
+            </View>
+          </TouchableOpacity>
+        ))}
+
+        {/* Separator */}
+        <View style={styles.separator} />
+
+        {/* Section 3: Other Tools */}
+        {CARDS.slice(7).map((card, index) => (
+          <TouchableOpacity
+            key={index + 7}
+            activeOpacity={0.85}
+            onPress={() => navigation.navigate(card.screen)}
+          >
+            <View
+              style={[
+                styles.card,
+                {
+                  borderColor: card.accent + "80",
+                  backgroundColor: card.accent + "20",
+                },
+              ]}
+            >
+              <View
+                style={[
+                  styles.iconContainer,
+                  card.wideIcon && styles.iconContainerWide,
+                  { backgroundColor: card.accent + "20" },
+                ]}
+              >
+                {card.iconComponent(card.accent)}
+              </View>
+              <Text style={styles.cardTitle}>{card.title}</Text>
+              <MaterialIcons
+                name="keyboard-arrow-right"
+                size={28}
+                color={isDark ? "white" : "black"}
+              />
             </View>
           </TouchableOpacity>
         ))}
@@ -301,22 +423,36 @@ const Home = ({ navigation }) => {
         onRequestClose={() => setInfoVisible(false)}
       >
         <View style={styles.modalOverlay}>
-          <BlurView blurType={colors.blurType} blurAmount={10} style={StyleSheet.absoluteFillObject} />
+          <BlurView
+            blurType={colors.blurType}
+            blurAmount={10}
+            style={StyleSheet.absoluteFillObject}
+          />
           <View style={styles.modalBox}>
-
             {/* Modal Header */}
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>About This App</Text>
-              <TouchableOpacity onPress={() => setInfoVisible(false)} activeOpacity={0.7}>
-                <Ionicons name="close" size={24} color={colors.sectionSubtitle} />
+              <TouchableOpacity
+                onPress={() => setInfoVisible(false)}
+                activeOpacity={0.7}
+              >
+                <Ionicons
+                  name="close"
+                  size={24}
+                  color={colors.sectionSubtitle}
+                />
               </TouchableOpacity>
             </View>
 
             <Text style={styles.modalSubtitle}>
-              A powerful all-in-one toolkit for media processing — right on your device.
+              A powerful all-in-one toolkit for media processing — right on your
+              device.
             </Text>
 
-            <ScrollView showsVerticalScrollIndicator={false} style={styles.featureScroll}>
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              style={styles.featureScroll}
+            >
               {/* Security Section */}
               <View style={styles.securityCard}>
                 <View style={styles.securityHeader}>
@@ -324,14 +460,25 @@ const Home = ({ navigation }) => {
                   <Text style={styles.securityTitle}>Security First</Text>
                 </View>
                 <Text style={styles.securityDesc}>
-                  This is a completely offline application. All your images, documents, and data are processed locally on your device. Nothing is uploaded to any server or shared with third parties. Your privacy and security are our top priority.
+                  This is a completely offline application. All your images,
+                  documents, and data are processed locally on your device.
+                  Nothing is uploaded to any server or shared with third
+                  parties. Your privacy and security are our top priority.
                 </Text>
               </View>
 
               {/* Features */}
               {FEATURES.map((f, i) => (
-                <View key={i} style={[styles.featureRow, { borderColor: f.accent + '30' }]}>
-                  <View style={[styles.featureIconBox, { backgroundColor: f.accent + '20' }]}>
+                <View
+                  key={i}
+                  style={[styles.featureRow, { borderColor: f.accent + "30" }]}
+                >
+                  <View
+                    style={[
+                      styles.featureIconBox,
+                      { backgroundColor: f.accent + "20" },
+                    ]}
+                  >
                     {f.icon}
                   </View>
                   <View style={styles.featureText}>
@@ -347,206 +494,214 @@ const Home = ({ navigation }) => {
               <Text style={styles.creditText}>Designed & Developed by</Text>
               <Text style={styles.creditName}>Koushik Chakraborty</Text>
             </View>
-
           </View>
         </View>
       </Modal>
-
     </View>
   );
 };
 
-const createStyles = (colors, isDark) => StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.bg,
-  },
+const createStyles = (colors, isDark) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.bg,
+    },
 
-  // Header
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: Platform.OS === 'android' ? StatusBar.currentHeight + 50 : 60,
-    marginBottom: 20,
-    paddingHorizontal: 20,
-  },
-  heading: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: colors.textPrimary,
-  },
-  headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  themeToggle: {
-    padding: 4,
-  },
-  toggleSwitch: {
-    width: 56,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: isDark ? '#444' : '#e0e0e0',
-    padding: 4,
-    justifyContent: 'center',
-  },
-  toggleSwitchActive: {
-    backgroundColor: '#282838',
-  },
-  toggleThumb: {
-    width: 25,
-    height: 25,
-    borderRadius: 12,
-    backgroundColor: isDark?"#000000": '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  infoBtn: {
-    padding: 4,
-  },
+    // Header
+    header: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginTop: Platform.OS === "android" ? StatusBar.currentHeight + 50 : 60,
+      marginBottom: 20,
+      paddingHorizontal: 20,
+    },
+    heading: {
+      fontSize: 32,
+      fontWeight: "bold",
+      color: colors.textPrimary,
+    },
+    headerRight: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+    },
+    themeToggle: {
+      padding: 4,
+    },
+    toggleSwitch: {
+      width: 56,
+      height: 32,
+      borderRadius: 16,
+      backgroundColor: isDark ? "#444" : "#e0e0e0",
+      padding: 4,
+      justifyContent: "center",
+    },
+    toggleSwitchActive: {
+      backgroundColor: "#282838",
+    },
+    toggleThumb: {
+      width: 25,
+      height: 25,
+      borderRadius: 12,
+      backgroundColor: isDark ? "#000000" : "#fff",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    infoBtn: {
+      padding: 4,
+    },
 
-  // Cards
-  scrollContent: {
-    paddingHorizontal: 20,
-    paddingBottom: 100,
-  },
-  card: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    width: '100%',
-    borderRadius: 56,
-    padding: 10,
-    marginBottom: 14,
-    borderWidth: 1,
-  },
-  iconContainer: {
-    width: 50,
-    height: 50,
-    borderRadius: 54,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 16,
-  },
-  iconContainerWide: {
-    width: 110,
-    flexDirection: 'row',
-    gap: 8,
-  },
-  cardTitle: {
-    flex: 1,
-    fontSize: 18,
-    fontWeight: '700',
-    color: colors.textPrimary,
-  },
+    // Cards
+    scrollContent: {
+      paddingHorizontal: 20,
+      paddingBottom: 100,
+    },
+    separator: {
+      height: 5,
+      borderRadius: 10,
+      width: "15%",
+      margin: "auto",
+      backgroundColor: isDark ? "#444" : "#ccc",
+      marginBottom: 30,
+      marginTop:15
+    },
+    card: {
+      flexDirection: "row",
+      alignItems: "center",
+      width: "100%",
+      borderRadius: 56,
+      padding: 10,
+      marginBottom: 14,
+      borderWidth: 1,
+    },
+    iconContainer: {
+      width: 50,
+      height: 50,
+      borderRadius: 54,
+      alignItems: "center",
+      justifyContent: "center",
+      marginRight: 16,
+    },
+    iconContainerWide: {
+      width: 110,
+      flexDirection: "row",
+      gap: 8,
+    },
+    cardTitle: {
+      flex: 1,
+      fontSize: 18,
+      fontWeight: "700",
+      color: colors.textPrimary,
+    },
 
-  // Modal
-  modalOverlay: {
-    flex: 1,
-    justifyContent: 'flex-end',
-  },
-  modalBox: {
-    backgroundColor: colors.modalBg,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    paddingHorizontal: 20,
-    paddingTop: 24,
-    paddingBottom: 36,
-    maxHeight: '85%',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 10,
-  },
-  modalTitle: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: colors.textPrimary,
-  },
-  modalSubtitle: {
-    fontSize: 13,
-    color: colors.textTertiary,
-    marginBottom: 20,
-    lineHeight: 18,
-  },
+    // Modal
+    modalOverlay: {
+      flex: 1,
+      justifyContent: "flex-end",
+    },
+    modalBox: {
+      backgroundColor: colors.modalBg,
+      borderTopLeftRadius: 28,
+      borderTopRightRadius: 28,
+      paddingHorizontal: 20,
+      paddingTop: 24,
+      paddingBottom: 36,
+      maxHeight: "85%",
+    },
+    modalHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: 10,
+    },
+    modalTitle: {
+      fontSize: 22,
+      fontWeight: "800",
+      color: colors.textPrimary,
+    },
+    modalSubtitle: {
+      fontSize: 13,
+      color: colors.textTertiary,
+      marginBottom: 20,
+      lineHeight: 18,
+    },
 
-  securityCard: {
-    backgroundColor: isDark ? '#1B5E20' : '#C8E6C9',
-    borderRadius: 25,
-    padding: 16,
-    marginBottom: 20,
-  },
-  securityHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginBottom: 10,
-  },
-  securityTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: isDark ? '#FFFFFF' : '#1B5E20',
-  },
-  securityDesc: {
-    fontSize: 13,
-    color: isDark ? '#E8F5E9' : '#2E7D32',
-    lineHeight: 20,
-  },
+    securityCard: {
+      backgroundColor: isDark ? "#1B5E20" : "#C8E6C9",
+      borderRadius: 25,
+      padding: 16,
+      marginBottom: 20,
+    },
+    securityHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+      marginBottom: 10,
+    },
+    securityTitle: {
+      fontSize: 18,
+      fontWeight: "700",
+      color: isDark ? "#FFFFFF" : "#1B5E20",
+    },
+    securityDesc: {
+      fontSize: 13,
+      color: isDark ? "#E8F5E9" : "#2E7D32",
+      lineHeight: 20,
+    },
 
-  featureScroll: {
-    flexShrink: 1,
-  },
-  featureRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    backgroundColor: colors.card,
-    borderRadius: 25,
-    borderWidth: 1,
-    padding: 14,
-    marginBottom: 10,
-    gap: 12,
-  },
-  featureIconBox: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  featureText: {
-    flex: 1,
-  },
-  featureTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    marginBottom: 3,
-  },
-  featureDesc: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    lineHeight: 18,
-  },
+    featureScroll: {
+      flexShrink: 1,
+    },
+    featureRow: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      backgroundColor: colors.card,
+      borderRadius: 25,
+      borderWidth: 1,
+      padding: 14,
+      marginBottom: 10,
+      gap: 12,
+    },
+    featureIconBox: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    featureText: {
+      flex: 1,
+    },
+    featureTitle: {
+      fontSize: 15,
+      fontWeight: "700",
+      color: colors.textPrimary,
+      marginBottom: 3,
+    },
+    featureDesc: {
+      fontSize: 13,
+      color: colors.textSecondary,
+      lineHeight: 18,
+    },
 
-  // Credit
-  creditRow: {
-    alignItems: 'center',
-    marginTop: 24,
-    marginBottom: 50,
-    gap: 4,
-  },
-  creditText: {
-    fontSize: 12,
-    color: colors.textSecondary,
-  },
-  creditName: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: colors.textPrimary,
-  },
-});
+    // Credit
+    creditRow: {
+      alignItems: "center",
+      marginTop: 24,
+      marginBottom: 50,
+      gap: 4,
+    },
+    creditText: {
+      fontSize: 12,
+      color: colors.textSecondary,
+    },
+    creditName: {
+      fontSize: 14,
+      fontWeight: "700",
+      color: colors.textPrimary,
+    },
+  });
 
 export default Home;
