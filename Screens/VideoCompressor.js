@@ -214,7 +214,7 @@ const VideoCompressor = ({ navigation }) => {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} disabled={loading}>
           <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.heading}>Video Compressor</Text>
@@ -291,7 +291,7 @@ const VideoCompressor = ({ navigation }) => {
           )}
 
           {/* Pick Video Button */}
-          <TouchableOpacity style={styles.pickBtn} onPress={pickVideo} activeOpacity={0.8}>
+          <TouchableOpacity style={styles.pickBtn} onPress={pickVideo} activeOpacity={0.8} disabled={loading}>
             <Ionicons name="videocam" size={22} color={colors.textPrimary} />
             <Text style={styles.pickBtnText}>
               {!video ? 'Pick Video' : 'Change Video'}
@@ -305,6 +305,7 @@ const VideoCompressor = ({ navigation }) => {
                 style={[styles.modeBtn, mode === 'quality' && styles.modeBtnActive]}
                 onPress={() => setMode('quality')}
                 activeOpacity={0.7}
+                disabled={loading}
               >
                 <Text style={[styles.modeBtnText, mode === 'quality' && styles.modeBtnTextActive]}>By Quality</Text>
               </TouchableOpacity>
@@ -312,6 +313,7 @@ const VideoCompressor = ({ navigation }) => {
                 style={[styles.modeBtn, mode === 'targetSize' && styles.modeBtnActive]}
                 onPress={() => setMode('targetSize')}
                 activeOpacity={0.7}
+                disabled={loading}
               >
                 <Text style={[styles.modeBtnText, mode === 'targetSize' && styles.modeBtnTextActive]}>By Target Size</Text>
               </TouchableOpacity>
@@ -336,6 +338,7 @@ const VideoCompressor = ({ navigation }) => {
                     ]}
                     onPress={() => setQuality(opt.value)}
                     activeOpacity={0.7}
+                    disabled={loading}
                   >
                     <Text
                       style={[
@@ -369,6 +372,7 @@ const VideoCompressor = ({ navigation }) => {
                     style={[styles.unitBtn, targetUnit === 'KB' && styles.unitBtnActive]}
                     onPress={() => setTargetUnit('KB')}
                     activeOpacity={0.7}
+                    disabled={loading}
                   >
                     <Text style={[styles.unitBtnText, targetUnit === 'KB' && styles.unitBtnTextActive]}>KB</Text>
                   </TouchableOpacity>
@@ -376,6 +380,7 @@ const VideoCompressor = ({ navigation }) => {
                     style={[styles.unitBtn, targetUnit === 'MB' && styles.unitBtnActive]}
                     onPress={() => setTargetUnit('MB')}
                     activeOpacity={0.7}
+                    disabled={loading}
                   >
                     <Text style={[styles.unitBtnText, targetUnit === 'MB' && styles.unitBtnTextActive]}>MB</Text>
                   </TouchableOpacity>
@@ -419,11 +424,11 @@ const VideoCompressor = ({ navigation }) => {
               </View>
 
               <View style={styles.actionRow}>
-                <TouchableOpacity style={styles.saveBtn} onPress={saveVideo} activeOpacity={0.8}>
+                <TouchableOpacity style={styles.saveBtn} onPress={saveVideo} activeOpacity={0.8} disabled={loading}>
                   <Ionicons name="download" size={20} color={colors.saveBtnText} />
                   <Text style={styles.saveBtnText}>Save</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.shareBtn} onPress={shareVideo} activeOpacity={0.8}>
+                <TouchableOpacity style={styles.shareBtn} onPress={shareVideo} activeOpacity={0.8} disabled={loading}>
                   <Ionicons name="share" size={20} color={colors.shareBtnText} />
                   <Text style={styles.shareBtnText}>Share</Text>
                 </TouchableOpacity>
@@ -433,6 +438,7 @@ const VideoCompressor = ({ navigation }) => {
                 style={styles.retryBtn}
                 onPress={() => { setCompressedUri(null); setCompressedSize(null); setProgress(0); }}
                 activeOpacity={0.8}
+                disabled={loading}
               >
                 <Ionicons name="refresh" size={20} color={colors.textPrimary} />
                 <Text style={styles.retryBtnText}>Compress Again</Text>

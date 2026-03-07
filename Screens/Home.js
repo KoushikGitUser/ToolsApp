@@ -28,7 +28,7 @@ const CARDS = [
     accent: '#D50000',
     screen: 'ImageToPdf',
   },
-  {
+    {
     title: 'Image Compressor',
     wideIcon: true,
     iconComponent: (color) => (
@@ -41,7 +41,7 @@ const CARDS = [
     accent: '#ffa200',
     screen: 'ImageCompressor',
   },
-  {
+    {
     title: 'Format Changer',
     wideIcon: true,
     iconComponent: (color) => (
@@ -54,7 +54,7 @@ const CARDS = [
     accent: '#2E86DE',
     screen: 'ImageFormatConverter',
   },
-  {
+    {
     title: 'Camera to Text',
     wideIcon: true,
     iconComponent: (color) => (
@@ -66,6 +66,58 @@ const CARDS = [
     ),
     accent: '#FF6F00',
     screen: 'CameraToText',
+  },
+  {
+    title: 'Audio Trimmer',
+    wideIcon: true,
+    iconComponent: (color) => (
+      <>
+        <Ionicons name="musical-notes" size={24} color={color} />
+        <Feather name="repeat" size={19} color={color} />
+        <MaterialCommunityIcons name="content-cut" size={24} color={color} />
+      </>
+    ),
+    accent: '#9C27B0',
+    screen: 'AudioTrimmer',
+  },
+  {
+    title: 'Audio Compressor',
+    wideIcon: true,
+    iconComponent: (color) => (
+      <>
+        <Ionicons name="musical-notes" size={24} color={color} />
+        <Feather name="repeat" size={19} color={color} />
+        <AntDesign name="compress" size={24} color={color} />
+      </>
+    ),
+    accent: '#cb0086',
+    screen: 'AudioCompressor',
+  },
+    {
+    title: 'Video Compressor',
+    wideIcon: true,
+    iconComponent: (color) => (
+      <>
+        <Ionicons name="videocam" size={24} color={color} />
+        <Feather name="repeat" size={19} color={color} />
+        <AntDesign name="compress" size={24} color={color} />
+      </>
+    ),
+    accent: '#3f51c3',
+    screen: 'VideoCompressor',
+  },
+    {
+    title: 'QR Code Tools',
+    wideIcon: true,
+    iconComponent: (color) => (
+      <>
+        <Ionicons name="qr-code" size={24} color={color} />
+        <Feather name="repeat" size={19} color={color} />
+        <Entypo name="tools" size={24} color={color} />
+      </>
+    ),
+    accent: '#6B8E23',
+    screen: 'QRCodeTools',
   },
   {
     title: 'Text To Speech',
@@ -81,69 +133,17 @@ const CARDS = [
     screen: 'TextToSpeech',
   },
   {
-    title: 'QR Code Tools',
-    wideIcon: true,
-    iconComponent: (color) => (
-      <>
-        <Ionicons name="qr-code" size={24} color={color} />
-        <Feather name="repeat" size={19} color={color} />
-        <Entypo name="tools" size={24} color={color} />
-      </>
-    ),
-    accent: '#6B8E23',
-    screen: 'QRCodeTools',
-  },
-  {
-    title: 'Video Compressor',
-    wideIcon: true,
-    iconComponent: (color) => (
-      <>
-        <Ionicons name="videocam" size={24} color={color} />
-        <Feather name="repeat" size={19} color={color} />
-        <AntDesign name="compress" size={24} color={color} />
-      </>
-    ),
-    accent: '#3f51c3',
-    screen: 'VideoCompressor',
-  },
-  {
-    title: 'Audio Compressor',
-    wideIcon: true,
-    iconComponent: (color) => (
-      <>
-        <Ionicons name="musical-notes" size={24} color={color} />
-        <Feather name="repeat" size={19} color={color} />
-        <AntDesign name="compress" size={24} color={color} />
-      </>
-    ),
-    accent: '#cb0086',
-    screen: 'AudioCompressor',
-  },
-  {
-    title: 'Full Blur',
+    title: 'Image Blur',
     wideIcon: true,
     iconComponent: (color) => (
       <>
         <Ionicons name="image" size={24} color={color} />
         <Feather name="repeat" size={19} color={color} />
-        <MaterialIcons name="deblur" size={24} color={color} />
+        <MaterialIcons name="blur-on" size={24} color={color} />
       </>
     ),
     accent: '#009688',
     screen: 'FullBlur',
-  },
-  {
-    title: 'Audio Trimmer',
-    wideIcon: true,
-    iconComponent: (color) => (
-      <>
-        <Ionicons name="musical-notes" size={24} color={color} />
-        <Feather name="repeat" size={19} color={color} />
-        <MaterialCommunityIcons name="content-cut" size={24} color={color} />
-      </>
-    ),
-    accent: '#FF0000',
-    screen: 'AudioTrimmer',
   },
 ];
 
@@ -173,22 +173,10 @@ const FEATURES = [
     desc: 'Capture images with your camera and extract text using OCR technology instantly.',
   },
   {
-    icon: <FontAwesome6 name="volume-high" size={20} color="#00f2ff" />,
-    accent: '#00f2ff',
-    title: 'Text To Speech',
-    desc: 'Convert any text into natural-sounding speech.',
-  },
-  {
-    icon: <Ionicons name="qr-code" size={20} color="#6B8E23" />,
-    accent: '#6B8E23',
-    title: 'QR Code Tools',
-    desc: 'Generate QR codes from text or URLs and scan QR codes with your camera.',
-  },
-  {
-    icon: <Ionicons name="videocam" size={20} color="#3f51c3" />,
-    accent: '#3f51c3',
-    title: 'Video Compressor',
-    desc: 'Compress video files to save storage space with adjustable quality and resolution options.',
+    icon: <MaterialCommunityIcons name="content-cut" size={20} color="#9C27B0" />,
+    accent: '#9C27B0',
+    title: 'Audio Trimmer',
+    desc: 'Trim and cut audio files precisely with an easy-to-use interface and waveform visualization.',
   },
   {
     icon: <Ionicons name="musical-notes" size={20} color="#cb0086" />,
@@ -197,16 +185,28 @@ const FEATURES = [
     desc: 'Compress audio files with selectable bitrate presets to reduce file size efficiently.',
   },
   {
-    icon: <MaterialIcons name="deblur" size={20} color="#009688" />,
-    accent: '#009688',
-    title: 'Full Blur',
-    desc: 'Apply smooth blur effects to any image with adjustable intensity levels and save at original resolution.',
+    icon: <Ionicons name="videocam" size={20} color="#3f51c3" />,
+    accent: '#3f51c3',
+    title: 'Video Compressor',
+    desc: 'Compress video files to save storage space with adjustable quality and resolution options.',
   },
   {
-    icon: <MaterialCommunityIcons name="content-cut" size={20} color="#FF0000" />,
-    accent: '#FF0000',
-    title: 'Audio Trimmer',
-    desc: 'Trim and cut audio files precisely with an easy-to-use interface and waveform visualization.',
+    icon: <Ionicons name="qr-code" size={20} color="#6B8E23" />,
+    accent: '#6B8E23',
+    title: 'QR Code Tools',
+    desc: 'Generate QR codes from text or URLs and scan QR codes with your camera.',
+  },
+  {
+    icon: <FontAwesome6 name="volume-high" size={20} color="#00f2ff" />,
+    accent: '#00f2ff',
+    title: 'Text To Speech',
+    desc: 'Convert any text into natural-sounding speech.',
+  },
+  {
+    icon: <MaterialIcons name="blur-on" size={20} color="#009688" />,
+    accent: '#009688',
+    title: 'Image Blur',
+    desc: 'Apply smooth blur effects to any image with adjustable intensity levels and save at original resolution.',
   },
 ];
 
@@ -287,6 +287,7 @@ const Home = ({ navigation }) => {
                 {card.iconComponent(card.accent)}
               </View>
               <Text style={styles.cardTitle}>{card.title}</Text>
+              <MaterialIcons name="keyboard-arrow-right" size={28} color={isDark?"white":"black"} />
             </View>
           </TouchableOpacity>
         ))}
@@ -416,7 +417,7 @@ const createStyles = (colors, isDark) => StyleSheet.create({
     alignItems: 'center',
     width: '100%',
     borderRadius: 56,
-    padding: 20,
+    padding: 10,
     marginBottom: 14,
     borderWidth: 1,
   },
@@ -474,7 +475,7 @@ const createStyles = (colors, isDark) => StyleSheet.create({
 
   securityCard: {
     backgroundColor: isDark ? '#1B5E20' : '#C8E6C9',
-    borderRadius: 15,
+    borderRadius: 25,
     padding: 16,
     marginBottom: 20,
   },
@@ -502,7 +503,7 @@ const createStyles = (colors, isDark) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     backgroundColor: colors.card,
-    borderRadius: 16,
+    borderRadius: 25,
     borderWidth: 1,
     padding: 14,
     marginBottom: 10,

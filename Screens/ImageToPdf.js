@@ -681,7 +681,7 @@ const ImageToPdf = ({ navigation }) => {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} disabled={loading || isCompressing}>
           <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.heading}>Image to PDF</Text>
@@ -718,8 +718,8 @@ const ImageToPdf = ({ navigation }) => {
                 <TouchableOpacity
                   onPress={clearAll}
                   activeOpacity={0.7}
-                  style={[styles.clearAllBtn, isSorting && styles.buttonDisabled]}
-                  disabled={isSorting}
+                  style={[styles.clearAllBtn, (isSorting || loading || isCompressing) && styles.buttonDisabled]}
+                  disabled={isSorting || loading || isCompressing}
                 >
                   <Text style={styles.clearAllText}>Clear All</Text>
                 </TouchableOpacity>
@@ -727,12 +727,13 @@ const ImageToPdf = ({ navigation }) => {
                   <TouchableOpacity
                     onPress={startSorting}
                     activeOpacity={0.7}
-                    style={styles.sortBtn}
+                    style={[styles.sortBtn, (loading || isCompressing) && styles.buttonDisabled]}
+                    disabled={loading || isCompressing}
                   >
                     <Text style={styles.sortBtnText}>Sort</Text>
                   </TouchableOpacity>
                 ) : isSorting ? (
-                  <TouchableOpacity onPress={doneSorting} activeOpacity={0.7} style={styles.doneBtn}>
+                  <TouchableOpacity onPress={doneSorting} activeOpacity={0.7} style={[styles.doneBtn, (loading || isCompressing) && styles.buttonDisabled]} disabled={loading || isCompressing}>
                     <Text style={styles.doneBtnText}>Done</Text>
                   </TouchableOpacity>
                 ) : null}
@@ -748,6 +749,7 @@ const ImageToPdf = ({ navigation }) => {
                   <TouchableOpacity
                     activeOpacity={0.9}
                     onPress={() => isSorting ? selectImageToSort(index) : setPreviewIndex(index)}
+                    disabled={loading || isCompressing}
                   >
                     <View style={styles.thumbWrapper}>
                       <Image source={{ uri: img.uri }} style={styles.thumb} />
@@ -757,6 +759,7 @@ const ImageToPdf = ({ navigation }) => {
                         <TouchableOpacity
                           style={styles.editBtn}
                           onPress={() => openEditModal(index)}
+                          disabled={loading || isCompressing}
                         >
                           <MaterialIcons name="edit" size={20} color="#000" />
                           <Text style={styles.editBtnText}>Edit</Text>
@@ -768,6 +771,7 @@ const ImageToPdf = ({ navigation }) => {
                         <TouchableOpacity
                           style={styles.removeBtn}
                           onPress={() => removeImage(index)}
+                          disabled={loading || isCompressing}
                         >
                           <Ionicons name="close" size={16} color="#fff" />
                         </TouchableOpacity>
@@ -783,6 +787,7 @@ const ImageToPdf = ({ navigation }) => {
                         <TouchableOpacity
                           style={styles.expandBtn}
                           onPress={() => setPreviewIndex(index)}
+                          disabled={loading || isCompressing}
                         >
                           <MaterialCommunityIcons name="arrow-expand" size={16} color="#fff" />
                         </TouchableOpacity>
@@ -808,10 +813,10 @@ const ImageToPdf = ({ navigation }) => {
         {/* Pick Images Button */}
         {!pdfUri && !isSorting && (
           <TouchableOpacity
-            style={[styles.pickBtn, (images.length >= 50 || isAddingImages) && styles.pickBtnDisabled]}
+            style={[styles.pickBtn, (images.length >= 50 || isAddingImages || loading || isCompressing) && styles.pickBtnDisabled]}
             onPress={pickImages}
             activeOpacity={0.8}
-            disabled={images.length >= 50 || isAddingImages}
+            disabled={images.length >= 50 || isAddingImages || loading || isCompressing}
           >
             {isAddingImages ? (
               <>
@@ -847,6 +852,7 @@ const ImageToPdf = ({ navigation }) => {
                 }).start();
               }}
               activeOpacity={0.7}
+              disabled={loading || isCompressing}
             >
               <View style={styles.frameToggleContent}>
                 <MaterialIcons name="crop-din" size={20} color={colors.textPrimary} />
@@ -874,6 +880,7 @@ const ImageToPdf = ({ navigation }) => {
               style={styles.pageSizeBtn}
               onPress={() => setPageSizeModalVisible(true)}
               activeOpacity={0.7}
+              disabled={loading || isCompressing}
             >
               <MaterialCommunityIcons name="fit-to-page" size={20} color={colors.textPrimary} />
               <Text style={styles.pageSizeBtnLabel}>Page Size</Text>
@@ -891,13 +898,14 @@ const ImageToPdf = ({ navigation }) => {
                 setRenameModalVisible(true);
               }}
               activeOpacity={0.7}
+              disabled={loading || isCompressing}
             >
               <Ionicons name="pencil" size={20} color={colors.textPrimary} />
               <Text style={styles.pageSizeBtnLabel}>Rename PDF</Text>
               <View style={styles.pageSizeBtnRight}>
                 <Text style={styles.pageSizeBtnValue}>
                   {pdfName
-                    ? (pdfName.length > 30 ? pdfName.substring(0, 30) + '...' : pdfName)
+                    ? (pdfName.length > 17 ? pdfName.substring(0, 17) + '...' : pdfName)
                     : 'Default'}
                 </Text>
                 <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
@@ -909,6 +917,7 @@ const ImageToPdf = ({ navigation }) => {
               style={styles.pageSizeBtn}
               onPress={() => setQualityModalVisible(true)}
               activeOpacity={0.7}
+              disabled={loading || isCompressing}
             >
               <FontAwesome5 name="compress" size={20} color={colors.textPrimary} />
               <Text style={styles.pageSizeBtnLabel}>PDF Quality</Text>
@@ -925,10 +934,10 @@ const ImageToPdf = ({ navigation }) => {
         {/* Convert Button */}
         {images.length > 0 && !pdfUri && !isSorting && (
           <TouchableOpacity
-            style={[styles.convertBtn, loading && styles.btnDisabled]}
+            style={[styles.convertBtn, (loading || isCompressing) && styles.btnDisabled]}
             onPress={convertToPdf}
             activeOpacity={0.8}
-            disabled={loading}
+            disabled={loading || isCompressing}
           >
             {loading ? (
               <ActivityIndicator color="#fff" size="small" />
@@ -956,17 +965,17 @@ const ImageToPdf = ({ navigation }) => {
               </View>
             </View>
 
-            <TouchableOpacity style={styles.shareBtn} onPress={sharePdf} activeOpacity={0.8}>
+            <TouchableOpacity style={styles.shareBtn} onPress={sharePdf} activeOpacity={0.8} disabled={loading || isCompressing}>
               <Ionicons name="share" size={20} color={colors.shareBtnText} />
               <Text style={styles.shareBtnText}>Save / Share PDF</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.showPdfBtn} onPress={showPdf} activeOpacity={0.8}>
+            <TouchableOpacity style={styles.showPdfBtn} onPress={showPdf} activeOpacity={0.8} disabled={loading || isCompressing}>
               <Ionicons name="eye-outline" size={20} color="#fff" />
               <Text style={styles.showPdfBtnText}>Show PDF</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.generateAgainBtn} onPress={resetToPdfGeneration} activeOpacity={0.8}>
+            <TouchableOpacity style={styles.generateAgainBtn} onPress={resetToPdfGeneration} activeOpacity={0.8} disabled={loading || isCompressing}>
               <Ionicons name="refresh" size={20} color={colors.textPrimary} />
               <Text style={styles.generateAgainBtnText}>Generate Again</Text>
             </TouchableOpacity>

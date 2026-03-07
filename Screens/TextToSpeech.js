@@ -205,7 +205,7 @@ const TextToSpeech = ({ navigation }) => {
                 activeOpacity={0.8}
               >
                 <MaterialCommunityIcons name="file-document-edit" size={24} color={isDark ? '#0075c3' : '#fff'} />
-                <Text style={styles.enterAgainButtonText}>Enter text again</Text>
+                <Text style={styles.enterAgainButtonText}>Enter again</Text>
               </TouchableOpacity>
 
               <TouchableOpacity

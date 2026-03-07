@@ -9,7 +9,7 @@ import {
   ScrollView,
   ActivityIndicator,
   Dimensions,
-  PanResponder,
+  PanResponder, 
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { triggerToast } from '../Services/toast';
@@ -17,13 +17,17 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as Sharing from 'expo-sharing';
 import { useTheme } from '../Services/ThemeContext';
 import { useAudioPlayer, useAudioPlayerStatus, setAudioModeAsync } from 'expo-audio';
-import { File, Paths } from 'expo-file-system';
+import { File } from 'expo-file-system';
+import { trim } from 'react-native-video-trim';
+import { Audio as CompressorAudio } from 'react-native-compressor';
 
 const ACCENT = '#FF0000';
 const ACCENT_LIGHT = '#FF0000';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const WAVEFORM_WIDTH = SCREEN_WIDTH - 80;
 const HANDLE_WIDTH = 20;
+const SCROLL_PADDING = 40; // 20px on each side
+const CONTAINER_WIDTH = SCREEN_WIDTH - SCROLL_PADDING;
+const WAVEFORM_WIDTH = CONTAINER_WIDTH - (HANDLE_WIDTH * 2); // Container width minus handles
 
 const AudioTrimmer = ({ navigation }) => {
   const [audio, setAudio] = useState(null);
@@ -36,6 +40,7 @@ const AudioTrimmer = ({ navigation }) => {
   const [trimmedSize, setTrimmedSize] = useState(null);
   const [originalSize, setOriginalSize] = useState(null);
   const [waveformHeights, setWaveformHeights] = useState([]);
+  const [isAdjusting, setIsAdjusting] = useState(false); // Track if user is adjusting trim
 
   const { colors, isDark } = useTheme();
   const accent = isDark ? ACCENT : ACCENT_LIGHT;
@@ -133,22 +138,87 @@ const AudioTrimmer = ({ navigation }) => {
 
     setLoading(true);
     try {
-      // For now, create a placeholder trimmed file
-      // The actual trimming will need a proper library
-      const filename = `trimmed_${Date.now()}.mp3`;
-      const outputPath = `${Paths.cache}/${filename}`;
+      // Trim the audio using react-native-video-trim
+      const result = await trim(audio.uri, {
+        startTime: startTime * 1000, // Convert to milliseconds
+        endTime: endTime * 1000, // Convert to milliseconds
+        quality: 'high',
+        saveToCameraRoll: false,
+        saveWithCurrentDate: false,
+      });
 
-      // Copy the original file as trimmed for now
-      const sourceFile = new File(audio.uri);
-      const outputFile = new File(outputPath);
+      console.log('Trimmed audio result:', result);
 
-      sourceFile.copy(outputFile);
+      // Extract the outputPath from the result object
+      const trimmedPath = result.outputPath;
+      console.log('Trimmed audio path (mp4):', trimmedPath);
 
-      setTrimmedUri(outputPath);
+      // Create proper file URI for the trimmed mp4
+      const mp4Uri = `file://${trimmedPath}`;
 
-      // Get file size
-      if (outputFile.exists) {
-        setTrimmedSize(outputFile.size);
+      // Copy the trimmed mp4 to a new file with .m4a extension (proper audio format)
+      const audioFileName = `Trimmed_Audio_ToolsApp_temp.m4a`;
+
+      // Get the cache directory path properly
+      const cacheDir = trimmedPath.substring(0, trimmedPath.lastIndexOf('/'));
+      const audioPath = `${cacheDir}/${audioFileName}`;
+      const audioUri = `file://${audioPath}`;
+
+      console.log('Cache directory:', cacheDir);
+      console.log('Copying to audio format (.m4a):', audioPath);
+
+      // Copy the mp4 file to m4a (same format, just different extension)
+      const sourceFile = new File(mp4Uri);
+      const destFile = new File(audioUri);
+
+      if (destFile.exists) {
+        destFile.delete();
+      }
+
+      sourceFile.copy(destFile);
+
+      console.log('M4A file created:', audioUri);
+
+      // Convert m4a to mp3 using react-native-compressor
+      console.log('Converting m4a to mp3...');
+      const mp3TempResult = await CompressorAudio.compress(audioUri, {
+        bitrate: 192000, // High quality 192kbps
+      });
+
+      console.log('MP3 temp file created:', mp3TempResult);
+
+      // Rename the MP3 to our desired filename
+      const mp3FileName = `Trimmed_Audio_ToolsApp.mp3`;
+      const mp3Path = `${cacheDir}/${mp3FileName}`;
+      const mp3Uri = `file://${mp3Path}`;
+
+      const mp3TempFile = new File(mp3TempResult);
+      const mp3FinalFile = new File(mp3Uri);
+
+      // Delete existing file if present
+      if (mp3FinalFile.exists) {
+        mp3FinalFile.delete();
+      }
+
+      // Copy to final name
+      mp3TempFile.copy(mp3FinalFile);
+
+      console.log('Final MP3 file created:', mp3Uri);
+
+      // Store the final MP3 file path
+      setTrimmedUri(mp3Uri);
+
+      // Get file size of the final MP3
+      try {
+        console.log('Checking MP3 file at:', mp3Uri);
+        console.log('MP3 file exists:', mp3FinalFile.exists);
+
+        if (mp3FinalFile.exists) {
+          console.log('MP3 file size:', mp3FinalFile.size);
+          setTrimmedSize(mp3FinalFile.size);
+        }
+      } catch (e) {
+        console.log('Error getting MP3 file size:', e);
       }
 
       triggerToast('Success', 'Audio trimmed successfully!', 'success', 2500);
@@ -162,7 +232,23 @@ const AudioTrimmer = ({ navigation }) => {
 
   const shareAudio = async () => {
     if (!trimmedUri) return;
-    await Sharing.shareAsync(trimmedUri, { mimeType: 'audio/*' });
+    try {
+      console.log('Sharing trimmed audio from:', trimmedUri);
+
+      // Check if file exists first
+      const file = new File(trimmedUri);
+      console.log('File exists before sharing:', file.exists);
+      console.log('File size before sharing:', file.size);
+
+      // Try sharing with different MIME types
+      await Sharing.shareAsync(trimmedUri, {
+        mimeType: 'audio/*',
+        dialogTitle: 'Save Trimmed Audio',
+      });
+    } catch (error) {
+      console.log('Share error:', error);
+      triggerToast('Error', 'Failed to share audio.', 'error', 3000);
+    }
   };
 
   const formatTime = (seconds) => {
@@ -183,18 +269,18 @@ const AudioTrimmer = ({ navigation }) => {
   const startPanResponder = useMemo(
     () =>
       PanResponder.create({
-        onStartShouldSetPanResponder: () => true,
-        onMoveShouldSetPanResponder: () => true,
+        onStartShouldSetPanResponder: () => !loading,
+        onMoveShouldSetPanResponder: () => !loading,
         onPanResponderGrant: () => {
           if (status.playing) {
             player.pause();
           }
+          setIsAdjusting(true);
         },
         onPanResponderMove: (evt) => {
           const touchX = evt.nativeEvent.pageX;
-          const containerX = 40; // Left padding
-          const relativeX = touchX - containerX;
-          const newPosition = Math.max(0, Math.min(relativeX, WAVEFORM_WIDTH - HANDLE_WIDTH));
+          const relativeX = touchX - HANDLE_WIDTH; // Offset for the handle itself
+          const newPosition = Math.max(0, Math.min(relativeX, WAVEFORM_WIDTH));
           const newTime = (newPosition / WAVEFORM_WIDTH) * duration;
 
           if (newTime < endTime - 1) {
@@ -202,26 +288,29 @@ const AudioTrimmer = ({ navigation }) => {
             setStartTime(newTime);
           }
         },
+        onPanResponderRelease: () => {
+          setIsAdjusting(false);
+        },
       }),
-    [duration, endTime, status.playing]
+    [duration, endTime, status.playing, loading]
   );
 
   // Pan responder for end handle
   const endPanResponder = useMemo(
     () =>
       PanResponder.create({
-        onStartShouldSetPanResponder: () => true,
-        onMoveShouldSetPanResponder: () => true,
+        onStartShouldSetPanResponder: () => !loading,
+        onMoveShouldSetPanResponder: () => !loading,
         onPanResponderGrant: () => {
           if (status.playing) {
             player.pause();
           }
+          setIsAdjusting(true);
         },
         onPanResponderMove: (evt) => {
           const touchX = evt.nativeEvent.pageX;
-          const containerX = 40; // Left padding
-          const relativeX = touchX - containerX;
-          const newPosition = Math.max(HANDLE_WIDTH, Math.min(relativeX, WAVEFORM_WIDTH));
+          const relativeX = touchX - HANDLE_WIDTH; // Offset for the handle itself
+          const newPosition = Math.max(0, Math.min(relativeX, WAVEFORM_WIDTH));
           const newTime = (newPosition / WAVEFORM_WIDTH) * duration;
 
           if (newTime > startTime + 1) {
@@ -229,14 +318,17 @@ const AudioTrimmer = ({ navigation }) => {
             setEndTime(newTime);
           }
         },
+        onPanResponderRelease: () => {
+          setIsAdjusting(false);
+        },
       }),
-    [duration, startTime, status.playing]
+    [duration, startTime, status.playing, loading]
   );
 
-  const startPosition = duration > 0 ? (startTime / duration) * WAVEFORM_WIDTH : 0;
-  const endPosition = duration > 0 ? (endTime / duration) * WAVEFORM_WIDTH : WAVEFORM_WIDTH;
+  const startPosition = duration > 0 ? HANDLE_WIDTH + (startTime / duration) * WAVEFORM_WIDTH : HANDLE_WIDTH;
+  const endPosition = duration > 0 ? HANDLE_WIDTH + (endTime / duration) * WAVEFORM_WIDTH : HANDLE_WIDTH + WAVEFORM_WIDTH;
   const trimmedDuration = endTime - startTime;
-  const currentProgress = duration > 0 ? ((status.currentTime || 0) / duration) * WAVEFORM_WIDTH : 0;
+  const currentProgress = duration > 0 ? HANDLE_WIDTH + ((status.currentTime || 0) / duration) * WAVEFORM_WIDTH : HANDLE_WIDTH;
 
   return (
     <View style={styles.container}>
@@ -255,7 +347,7 @@ const AudioTrimmer = ({ navigation }) => {
         {/* Empty State */}
         {!audio && (
           <View style={styles.emptyState}>
-            <MaterialCommunityIcons name="content-cut" size={64} color={colors.emptyIcon} />
+            <Ionicons name="musical-notes" size={64} color={colors.emptyIcon} />
             <Text style={styles.emptyTitle}>No audio selected</Text>
             <Text style={styles.emptyDesc}>
               Pick an audio file to trim it
@@ -268,7 +360,7 @@ const AudioTrimmer = ({ navigation }) => {
           <View style={styles.audioCard}>
             <View style={styles.audioTopRow}>
               <View style={styles.audioIconCircle}>
-                <Ionicons name="musical-note" size={28} color={accent} />
+                <Ionicons name="musical-notes" size={28} color={accent} />
               </View>
               <View style={styles.audioInfo}>
                 <Text style={styles.audioName} numberOfLines={1}>
@@ -282,12 +374,13 @@ const AudioTrimmer = ({ navigation }) => {
                 style={styles.playBtn}
                 onPress={togglePlayback}
                 activeOpacity={0.7}
-                disabled={!duration}
+                disabled={!duration || loading}
               >
                 <Ionicons
                   name={isPlaying ? 'pause' : 'play'}
                   size={24}
                   color="#fff"
+                  style={{marginLeft:1}}
                 />
               </TouchableOpacity>
             </View>
@@ -299,52 +392,37 @@ const AudioTrimmer = ({ navigation }) => {
                   <View
                     style={[
                       styles.progressBarFill,
-                      { width: `${((status.currentTime || 0) / duration) * 100}%` }
+                      {
+                        width: isAdjusting
+                          ? '0%'
+                          : `${Math.min(100, Math.max(0, ((status.currentTime - startTime) / (endTime - startTime)) * 100))}%`
+                      }
                     ]}
                   />
                 </View>
                 <View style={styles.progressTimeRow}>
-                  <Text style={styles.progressTime}>{formatTime(status.currentTime || 0)}</Text>
-                  <Text style={styles.progressTime}>{formatTime(duration)}</Text>
+                  <Text style={styles.progressTime}>
+                    {isAdjusting ? formatTime(startTime) : formatTime(Math.max(startTime, Math.min(status.currentTime || 0, endTime)))}
+                  </Text>
+                  <Text style={styles.progressTime}>{formatTime(endTime)}</Text>
                 </View>
               </>
             )}
           </View>
         )}
 
-        {/* Size Info */}
-        {audio && (
-          <View style={styles.sizeRow}>
-            <View style={styles.sizeCard}>
-              <Text style={styles.sizeLabel}>Original</Text>
-              <Text style={styles.sizeValue}>{formatSize(originalSize)}</Text>
-            </View>
-            {trimmedSize ? (
-              <View style={styles.sizeCard}>
-                <Text style={styles.sizeLabel}>Trimmed</Text>
-                <Text style={[styles.sizeValue, { color: accent }]}>{formatSize(trimmedSize)}</Text>
-              </View>
-            ) : (
-              <View style={styles.sizeCard}>
-                <Text style={styles.sizeLabel}>Trimmed</Text>
-                <Text style={styles.sizeValue}>—</Text>
-              </View>
-            )}
-          </View>
+        {/* Pick Audio Button - shown when no audio */}
+        {!audio && (
+          <TouchableOpacity style={styles.pickBtn} onPress={pickAudio} activeOpacity={0.8}>
+            <Ionicons name="musical-notes" size={22} color={colors.textPrimary} />
+            <Text style={styles.pickBtnText}>Pick Audio</Text>
+          </TouchableOpacity>
         )}
-
-        {/* Pick Audio Button */}
-        <TouchableOpacity style={styles.pickBtn} onPress={pickAudio} activeOpacity={0.8}>
-          <Ionicons name="musical-notes" size={22} color={colors.textPrimary} />
-          <Text style={styles.pickBtnText}>
-            {!audio ? 'Pick Audio' : 'Change Audio'}
-          </Text>
-        </TouchableOpacity>
 
         {/* Waveform and Trim Controls */}
         {audio && duration > 0 && !trimmedUri && (
           <View style={styles.trimSection}>
-            <Text style={styles.sectionTitle}>Trim Audio</Text>
+
 
             {/* Time Display */}
             <View style={styles.timeDisplay}>
@@ -368,8 +446,8 @@ const AudioTrimmer = ({ navigation }) => {
               <View style={styles.waveformBg}>
                 {/* Generate waveform bars */}
                 {waveformHeights.map((height, i) => {
-                  const isInRange = (i / 50) * WAVEFORM_WIDTH >= startPosition &&
-                                   (i / 50) * WAVEFORM_WIDTH <= endPosition;
+                  const barPosition = HANDLE_WIDTH + (i / 50) * WAVEFORM_WIDTH;
+                  const isInRange = barPosition >= startPosition && barPosition <= endPosition;
                   return (
                     <View
                       key={i}
@@ -398,18 +476,16 @@ const AudioTrimmer = ({ navigation }) => {
               {/* Start Handle */}
               <View
                 {...startPanResponder.panHandlers}
-                style={[styles.handle, styles.startHandle, { left: startPosition }]}
+                style={[styles.handle, styles.startHandle, { left: startPosition - HANDLE_WIDTH }]}
               >
                 <View style={styles.handleGrip} />
-                <View style={styles.handleBar} />
               </View>
 
               {/* End Handle */}
               <View
                 {...endPanResponder.panHandlers}
-                style={[styles.handle, styles.endHandle, { left: endPosition - HANDLE_WIDTH }]}
+                style={[styles.handle, styles.endHandle, { left: endPosition }]}
               >
-                <View style={styles.handleBar} />
                 <View style={styles.handleGrip} />
               </View>
 
@@ -426,12 +502,12 @@ const AudioTrimmer = ({ navigation }) => {
             </View>
 
             {/* Instructions */}
-            <View style={styles.instructionsBox}>
+            {/* <View style={styles.instructionsBox}>
               <MaterialCommunityIcons name="information-outline" size={18} color={accent} />
               <Text style={styles.instructionsText}>
                 Drag the handles to select the portion you want to keep
               </Text>
-            </View>
+            </View> */}
 
             {/* Manual Controls */}
             <View style={styles.manualControlsContainer}>
@@ -442,12 +518,14 @@ const AudioTrimmer = ({ navigation }) => {
                   <TouchableOpacity
                     style={styles.manualControlBtn}
                     onPress={() => {
+                      if (status.playing) player.pause();
                       const newStart = Math.max(0, startTime - 1);
                       if (newStart < endTime - 1) {
                         setStartTime(newStart);
                       }
                     }}
                     activeOpacity={0.7}
+                    disabled={loading}
                   >
                     <Ionicons name="remove" size={20} color={colors.textPrimary} />
                   </TouchableOpacity>
@@ -457,10 +535,12 @@ const AudioTrimmer = ({ navigation }) => {
                   <TouchableOpacity
                     style={styles.manualControlBtn}
                     onPress={() => {
+                      if (status.playing) player.pause();
                       const newStart = Math.min(endTime - 1, startTime + 1);
                       setStartTime(newStart);
                     }}
                     activeOpacity={0.7}
+                    disabled={loading}
                   >
                     <Ionicons name="add" size={20} color={colors.textPrimary} />
                   </TouchableOpacity>
@@ -474,10 +554,12 @@ const AudioTrimmer = ({ navigation }) => {
                   <TouchableOpacity
                     style={styles.manualControlBtn}
                     onPress={() => {
+                      if (status.playing) player.pause();
                       const newEnd = Math.max(startTime + 1, endTime - 1);
                       setEndTime(newEnd);
                     }}
                     activeOpacity={0.7}
+                    disabled={loading}
                   >
                     <Ionicons name="remove" size={20} color={colors.textPrimary} />
                   </TouchableOpacity>
@@ -487,16 +569,29 @@ const AudioTrimmer = ({ navigation }) => {
                   <TouchableOpacity
                     style={styles.manualControlBtn}
                     onPress={() => {
+                      if (status.playing) player.pause();
                       const newEnd = Math.min(duration, endTime + 1);
                       setEndTime(newEnd);
                     }}
                     activeOpacity={0.7}
+                    disabled={loading}
                   >
                     <Ionicons name="add" size={20} color={colors.textPrimary} />
                   </TouchableOpacity>
                 </View>
               </View>
             </View>
+
+            {/* Pick Audio Button */}
+            <TouchableOpacity
+              style={[styles.pickBtn, loading && { opacity: 0.5 }]}
+              onPress={pickAudio}
+              activeOpacity={0.8}
+              disabled={loading}
+            >
+              <Ionicons name="musical-notes" size={22} color={colors.textPrimary} />
+              <Text style={styles.pickBtnText}>Change Audio</Text>
+            </TouchableOpacity>
           </View>
         )}
 
@@ -526,6 +621,18 @@ const AudioTrimmer = ({ navigation }) => {
               <Text style={styles.successText}>Audio Trimmed!</Text>
             </View>
 
+            {/* Size Info */}
+            <View style={styles.sizeRow}>
+              <View style={styles.sizeCard}>
+                <Text style={styles.sizeLabel}>Original</Text>
+                <Text style={styles.sizeValue}>{formatSize(originalSize)}</Text>
+              </View>
+              <View style={styles.sizeCard}>
+                <Text style={styles.sizeLabel}>Trimmed</Text>
+                <Text style={[styles.sizeValue, { color: accent }]}>{formatSize(trimmedSize)}</Text>
+              </View>
+            </View>
+
             <TouchableOpacity style={styles.shareBtn} onPress={shareAudio} activeOpacity={0.8}>
               <Ionicons name="share" size={20} color={colors.shareBtnText} />
               <Text style={styles.shareBtnText}>Save / Share Audio</Text>
@@ -540,6 +647,11 @@ const AudioTrimmer = ({ navigation }) => {
                   setStartTime(0);
                   setEndTime(duration);
                 }
+                // Reset player to beginning
+                if (status.playing) {
+                  player.pause();
+                }
+                player.seekTo(0);
               }}
               activeOpacity={0.8}
             >
@@ -603,7 +715,7 @@ const createStyles = (colors, accent) => StyleSheet.create({
   audioCard: {
     marginTop: 16,
     backgroundColor: colors.card,
-    borderRadius: 20,
+    borderRadius: 35,
     padding: 18,
     borderWidth: 1,
     borderColor: colors.border,
@@ -729,8 +841,9 @@ const createStyles = (colors, accent) => StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     backgroundColor: colors.card,
-    borderRadius: 16,
+    borderRadius: 56,
     padding: 16,
+    paddingHorizontal:30,
     borderWidth: 1,
     borderColor: colors.border,
     marginBottom: 20,
@@ -752,16 +865,21 @@ const createStyles = (colors, accent) => StyleSheet.create({
 
   // Waveform
   waveformContainer: {
+    width: CONTAINER_WIDTH,
     height: 100,
     backgroundColor: colors.card,
-    borderRadius: 16,
+    borderRadius: 28,
     borderWidth: 1,
     borderColor: colors.border,
     position: 'relative',
-    overflow: 'hidden',
+    overflow: 'visible',
   },
   waveformBg: {
-    flex: 1,
+    position: 'absolute',
+    left: HANDLE_WIDTH,
+    right: HANDLE_WIDTH,
+    top: 0,
+    bottom: 0,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-evenly',
@@ -775,9 +893,10 @@ const createStyles = (colors, accent) => StyleSheet.create({
     position: 'absolute',
     top: 0,
     bottom: 0,
-    width: 2,
-    backgroundColor: '#FFD700',
+    width: 5,
+    backgroundColor: '#8d8d8d',
     zIndex: 5,
+    borderRadius:40
   },
   handle: {
     position: 'absolute',
@@ -790,26 +909,19 @@ const createStyles = (colors, accent) => StyleSheet.create({
   },
   startHandle: {
     backgroundColor: accent,
-    borderTopLeftRadius: 16,
-    borderBottomLeftRadius: 16,
+    borderTopLeftRadius:19,
+    borderBottomLeftRadius:19
   },
   endHandle: {
     backgroundColor: accent,
-    borderTopRightRadius: 16,
-    borderBottomRightRadius: 16,
+    borderTopRightRadius:19,
+    borderBottomRightRadius:19
   },
   handleGrip: {
     width: 4,
     height: 30,
     backgroundColor: '#fff',
     borderRadius: 2,
-  },
-  handleBar: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    width: 3,
-    backgroundColor: accent,
   },
   selectionOverlay: {
     position: 'absolute',
@@ -827,8 +939,9 @@ const createStyles = (colors, accent) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: accent + '15',
-    borderRadius: 12,
+    borderRadius: 52,
     padding: 12,
+    paddingHorizontal:17,
     marginTop: 16,
     gap: 10,
   },
@@ -842,14 +955,16 @@ const createStyles = (colors, accent) => StyleSheet.create({
   // Manual Controls
   manualControlsContainer: {
     marginTop: 20,
-    flexDirection: 'row',
+    flexDirection: 'column', // Row on tablet, column on phone
     gap: 12,
   },
   manualControl: {
-    flex: 1,
+    flex: SCREEN_WIDTH >= 600 ? 1 : undefined, // Flex only on tablet
+    width: SCREEN_WIDTH >= 600 ? undefined : '100%', // Full width on phone
     backgroundColor: colors.card,
-    borderRadius: 16,
-    padding: 16,
+    borderRadius: 30,
+    padding: 10,
+    paddingBottom:15,
     borderWidth: 1,
     borderColor: colors.border,
   },
@@ -867,9 +982,9 @@ const createStyles = (colors, accent) => StyleSheet.create({
     gap: 12,
   },
   manualControlBtn: {
-    width: 40,
+    width: 70,
     height: 40,
-    borderRadius: 20,
+    borderRadius: 50,
     backgroundColor: accent + '20',
     alignItems: 'center',
     justifyContent: 'center',
@@ -877,11 +992,11 @@ const createStyles = (colors, accent) => StyleSheet.create({
     borderColor: accent + '40',
   },
   manualControlValue: {
-    minWidth: 80,
+    minWidth: 70,
     paddingVertical: 8,
-    paddingHorizontal: 16,
+    paddingHorizontal: 32,
     backgroundColor: colors.bg,
-    borderRadius: 20,
+    borderRadius: 40,
     borderWidth: 1,
     borderColor: colors.border2,
     alignItems: 'center',

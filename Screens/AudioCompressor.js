@@ -220,7 +220,7 @@ const AudioCompressor = ({ navigation }) => {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} disabled={loading}>
           <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.heading}>Audio Compressor</Text>
@@ -251,7 +251,7 @@ const AudioCompressor = ({ navigation }) => {
             <View style={styles.playerCard}>
               <View style={styles.playerTop}>
                 <View style={styles.audioIconCircle}>
-                  <Ionicons name="musical-note" size={28} color={accent} />
+                  <Ionicons name="musical-notes" size={28} color={accent} />
                 </View>
                 <View style={styles.audioInfo}>
                   <Text style={styles.audioName} numberOfLines={1}>
@@ -263,6 +263,7 @@ const AudioCompressor = ({ navigation }) => {
                   style={styles.playBtn}
                   onPress={() => togglePlayback(compressedUri || audio.uri, !!compressedUri && playingCompressed)}
                   activeOpacity={0.7}
+                  disabled={loading}
                 >
                   <Ionicons name={isPlaying ? 'pause' : 'play'} size={24} color="#fff" />
                 </TouchableOpacity>
@@ -283,6 +284,7 @@ const AudioCompressor = ({ navigation }) => {
                     style={[styles.playbackToggleBtn, !playingCompressed && styles.playbackToggleBtnActive]}
                     onPress={() => togglePlayback(audio.uri, false)}
                     activeOpacity={0.7}
+                    disabled={loading}
                   >
                     <Text style={[styles.playbackToggleText, !playingCompressed && styles.playbackToggleTextActive]}>Original</Text>
                   </TouchableOpacity>
@@ -290,6 +292,7 @@ const AudioCompressor = ({ navigation }) => {
                     style={[styles.playbackToggleBtn, playingCompressed && styles.playbackToggleBtnActive]}
                     onPress={() => togglePlayback(compressedUri, true)}
                     activeOpacity={0.7}
+                    disabled={loading}
                   >
                     <Text style={[styles.playbackToggleText, playingCompressed && styles.playbackToggleTextActive]}>Compressed</Text>
                   </TouchableOpacity>
@@ -326,7 +329,7 @@ const AudioCompressor = ({ navigation }) => {
           )}
 
           {/* Pick Audio Button */}
-          <TouchableOpacity style={styles.pickBtn} onPress={pickAudio} activeOpacity={0.8}>
+          <TouchableOpacity style={styles.pickBtn} onPress={pickAudio} activeOpacity={0.8} disabled={loading}>
             <Ionicons name="musical-notes" size={22} color={colors.textPrimary} />
             <Text style={styles.pickBtnText}>
               {!audio ? 'Pick Audio' : 'Change Audio'}
@@ -340,6 +343,7 @@ const AudioCompressor = ({ navigation }) => {
                 style={[styles.modeBtn, mode === 'quality' && styles.modeBtnActive]}
                 onPress={() => setMode('quality')}
                 activeOpacity={0.7}
+                disabled={loading}
               >
                 <Text style={[styles.modeBtnText, mode === 'quality' && styles.modeBtnTextActive]}>By Quality</Text>
               </TouchableOpacity>
@@ -347,6 +351,7 @@ const AudioCompressor = ({ navigation }) => {
                 style={[styles.modeBtn, mode === 'targetSize' && styles.modeBtnActive]}
                 onPress={() => setMode('targetSize')}
                 activeOpacity={0.7}
+                disabled={loading}
               >
                 <Text style={[styles.modeBtnText, mode === 'targetSize' && styles.modeBtnTextActive]}>By Target Size</Text>
               </TouchableOpacity>
@@ -371,6 +376,7 @@ const AudioCompressor = ({ navigation }) => {
                     ]}
                     onPress={() => setQuality(opt.value)}
                     activeOpacity={0.7}
+                    disabled={loading}
                   >
                     <Text
                       style={[
@@ -404,6 +410,7 @@ const AudioCompressor = ({ navigation }) => {
                     style={[styles.unitBtn, targetUnit === 'KB' && styles.unitBtnActive]}
                     onPress={() => setTargetUnit('KB')}
                     activeOpacity={0.7}
+                    disabled={loading}
                   >
                     <Text style={[styles.unitBtnText, targetUnit === 'KB' && styles.unitBtnTextActive]}>KB</Text>
                   </TouchableOpacity>
@@ -411,6 +418,7 @@ const AudioCompressor = ({ navigation }) => {
                     style={[styles.unitBtn, targetUnit === 'MB' && styles.unitBtnActive]}
                     onPress={() => setTargetUnit('MB')}
                     activeOpacity={0.7}
+                    disabled={loading}
                   >
                     <Text style={[styles.unitBtnText, targetUnit === 'MB' && styles.unitBtnTextActive]}>MB</Text>
                   </TouchableOpacity>
@@ -445,7 +453,7 @@ const AudioCompressor = ({ navigation }) => {
                 <Text style={styles.successText}>Audio Compressed!</Text>
               </View>
 
-              <TouchableOpacity style={styles.shareBtn} onPress={shareAudio} activeOpacity={0.8}>
+              <TouchableOpacity style={styles.shareBtn} onPress={shareAudio} activeOpacity={0.8} disabled={loading}>
                 <Ionicons name="share" size={20} color={colors.shareBtnText} />
                 <Text style={styles.shareBtnText}>Save / Share Audio</Text>
               </TouchableOpacity>
@@ -459,6 +467,7 @@ const AudioCompressor = ({ navigation }) => {
                   if (isPlaying) player.pause();
                 }}
                 activeOpacity={0.8}
+                disabled={loading}
               >
                 <Ionicons name="refresh" size={20} color={colors.textPrimary} />
                 <Text style={styles.retryBtnText}>Compress Again</Text>
@@ -521,7 +530,7 @@ const createStyles = (colors, accent) => StyleSheet.create({
   playerCard: {
     marginTop: 16,
     backgroundColor: colors.card,
-    borderRadius: 20,
+    borderRadius: 33,
     padding: 18,
     borderWidth: 1,
     borderColor: colors.border,

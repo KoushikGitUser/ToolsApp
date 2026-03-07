@@ -153,7 +153,7 @@ const ImageFormatConverter = ({ navigation }) => {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} disabled={loading}>
           <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.heading}>Format Converter</Text>
@@ -242,7 +242,7 @@ const ImageFormatConverter = ({ navigation }) => {
         )}
 
         {/* Pick Image Button */}
-        <TouchableOpacity style={styles.pickBtn} onPress={pickImage} activeOpacity={0.8}>
+        <TouchableOpacity style={styles.pickBtn} onPress={pickImage} activeOpacity={0.8} disabled={loading}>
            <Ionicons name="image" size={24} color={colors.textPrimary} />
           <Text style={styles.pickBtnText}>
             {!image ? 'Pick Image' : 'Change Image'}
@@ -263,6 +263,7 @@ const ImageFormatConverter = ({ navigation }) => {
                   ]}
                   onPress={() => setTargetFormat(fmt.label)}
                   activeOpacity={0.7}
+                  disabled={loading}
                 >
                   <MaterialCommunityIcons
                     name={fmt.icon}
@@ -311,11 +312,11 @@ const ImageFormatConverter = ({ navigation }) => {
             </View>
 
             <View style={styles.actionRow}>
-              <TouchableOpacity style={styles.saveBtn} onPress={saveImage} activeOpacity={0.8}>
+              <TouchableOpacity style={styles.saveBtn} onPress={saveImage} activeOpacity={0.8} disabled={loading}>
                 <Ionicons name="download" size={20} color={colors.saveBtnText} />
                 <Text style={styles.saveBtnText}>Save</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.shareBtn} onPress={shareImage} activeOpacity={0.8}>
+              <TouchableOpacity style={styles.shareBtn} onPress={shareImage} activeOpacity={0.8} disabled={loading}>
                 <Ionicons name="share" size={20} color={colors.shareBtnText} />
                 <Text style={styles.shareBtnText}>Share</Text>
               </TouchableOpacity>
@@ -325,6 +326,7 @@ const ImageFormatConverter = ({ navigation }) => {
               style={styles.retryBtn}
               onPress={() => { setConvertedUri(null); setConvertedSize(null); setTargetFormat(null); }}
               activeOpacity={0.8}
+              disabled={loading}
             >
               <Ionicons name="refresh" size={20} color={colors.textPrimary} />
               <Text style={styles.retryBtnText}>Convert Again</Text>
